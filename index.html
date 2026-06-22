@@ -44,7 +44,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v12', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v13', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -193,13 +193,14 @@ document.addEventListener('DOMContentLoaded', function(){
               <v-card v-else>
                 <v-list lines="two" density="comfortable">
                   <template v-for="(t,i) in today.todays" :key="i">
-                    <v-list-item @click="toggleToday(t)">
+                    <v-list-item @click="t.needsType ? openDetail(t.uid) : toggleToday(t)">
                       <template #prepend>
-                        <v-avatar :color="t.done?'primary':'grey-lighten-2'" size="34">
+                        <v-icon v-if="t.needsType" color="warning" size="34">mdi-alert-circle-outline</v-icon>
+                        <v-avatar v-else :color="t.done?'primary':'grey-lighten-2'" size="34">
                           <v-icon color="white">{{ t.done?'mdi-check':'mdi-circle-outline' }}</v-icon>
                         </v-avatar>
                       </template>
-                      <v-list-item-title :class="t.done?'text-decoration-line-through text-medium-emphasis':''">{{ t.task }}</v-list-item-title>
+                      <v-list-item-title :class="t.needsType?'text-warning font-weight-bold':(t.done?'text-decoration-line-through text-medium-emphasis':'')">{{ t.task }}</v-list-item-title>
                       <v-list-item-subtitle>{{ t.name }}</v-list-item-subtitle>
                     </v-list-item>
                     <v-divider v-if="i<today.todays.length-1"></v-divider>
