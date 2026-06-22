@@ -69,9 +69,9 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v21', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v22', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
-    detail:null, detailOpen:false, editOpen:false, edit:{},
+    detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
     addOpen:false, addBusy:false,
     cal:(function(){var d=new Date();return {y:d.getFullYear(),m:d.getMonth()+1};})(),
@@ -196,7 +196,7 @@ var App={
     openEdit:function(){var r=this.detail;this.edit={uid:r.uid,type:r.type||'予約',name:r.name||'',in:r.in||'',out:r.out||'',adults:r.adults||'',amount:r.amount||'',phone:r.phone||'',email:r.email||'',lastContact:r.lastContact||'',notes:r.notes||''};this.editOpen=true;},
     saveEdit:function(){var s=this;var e=s.edit;var patch={'種別':e.type,'お客さん名':e.name,'IN':e.in,'OUT':e.out,'人数':e.adults,'金額':e.amount,'電話':e.phone,'メール':e.email,'最終やりとり日':e.lastContact,'メモ':e.notes};
       s.toast('保存中…');apiCall('update',{payload:JSON.stringify({uid:e.uid,patch:patch})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(e.uid);s.editOpen=false;s.toast('保存しました');});}).catch(function(err){s.toast('エラー: '+err.message);});},
-    cancelRes:function(){var s=this;var uid=s.detail.uid;apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.toast('キャンセルにしました');s.editOpen=false;s.detailOpen=false;s.refreshRes();}).catch(function(e){s.toast('エラー: '+e.message);});},
+    cancelRes:function(){var s=this;var uid=s.detail.uid;s.delConfirm=false;apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.toast('削除しました');s.editOpen=false;s.detailOpen=false;s.refreshRes();}).catch(function(e){s.toast('エラー: '+e.message);});},
     submitAdd:function(){var s=this;var a=s.add;var stop=(a.type==='売り止め');
       if(!a.in||!a.out){s.toast('IN/OUTを入力してください');return;}
       if(!stop&&!a.name.trim()){s.toast('お客さん名を入力してください');return;}
@@ -549,8 +549,28 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-text-field v-model="edit.lastContact" label="最終やりとり日 (YYYY-MM-DD)" variant="outlined" density="comfortable"></v-text-field>
           <v-textarea v-model="edit.notes" label="メモ" variant="outlined" rows="3"></v-textarea>
           <v-btn color="primary" block size="large" @click="saveEdit">保存</v-btn>
-          <v-btn color="error" variant="outlined" block size="large" class="mt-3" @click="cancelRes">この予約をキャンセル</v-btn>
+          <template v-if="detail.channel==='手動'">
+            <v-btn color="error" variant="outlined" block size="large" class="mt-3" prepend-icon="mdi-trash-can-outline" @click="delConfirm=true">{{ edit.type==='売り止め'?'この売り止めを削除':'この予約を削除' }}</v-btn>
+          </template>
+          <v-alert v-else type="info" variant="tonal" density="comfortable" class="mt-3" rounded="lg">
+            {{ chLabel(detail) }}の予約は、{{ chLabel(detail) }}側でキャンセルしてください。<br>キャンセルすると自動でここにも反映されます。
+          </v-alert>
         </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- 削除確認 -->
+    <v-dialog v-model="delConfirm" max-width="340">
+      <v-card>
+        <v-card-text class="pt-5 text-body-1">
+          本当に削除しますか？<br>
+          <span class="text-medium-emphasis text-body-2">手動の予約・売り止めが消え、Airbnb / Booking のブロックも自動で解除されます。</span>
+        </v-card-text>
+        <v-card-actions class="px-4 pb-4">
+          <v-btn variant="text" @click="delConfirm=false">やめる</v-btn>
+          <v-spacer></v-spacer>
+          <v-btn color="error" variant="flat" @click="cancelRes">削除する</v-btn>
+        </v-card-actions>
       </v-card>
     </v-dialog>
 
