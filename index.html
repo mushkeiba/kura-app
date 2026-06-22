@@ -11,168 +11,300 @@
     --line:#06C755; --line-d:#05a948;
     --bg:#F7F8FA; --surface:#FFFFFF; --border:#E6E8EB;
     --text:#1F2328; --soft:#6B7280; --faint:#9AA0AA;
-    --done:#06C755; --warn:#B7791F; --warn-bg:#FCF3DC;
+    --done:#06C755; --warn:#B7791F; --warn-bg:#FCF3DC; --danger:#DC2626;
+    --bk:#2563EB; --ab:#E0245E; --ps:#16A34A; --stop:#6B7280;
+    --navh:64px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
   body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);
-    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:24px;}
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
   .head{position:sticky;top:0;z-index:10;background:var(--line);color:#fff;
-    padding:max(14px,env(safe-area-inset-top)) 16px 14px;display:flex;align-items:center;gap:10px;}
-  .head .ttl{font-size:18px;font-weight:700;}
-  .head .sync{margin-left:auto;background:rgba(255,255,255,.2);border:0;color:#fff;
-    width:40px;height:40px;border-radius:50%;font-size:18px;}
-  .wrap{padding:14px;max-width:600px;margin:0 auto;}
-  .date{font-size:20px;font-weight:700;margin:6px 2px 14px;}
-  .sec{font-size:14px;font-weight:700;color:var(--soft);margin:18px 4px 8px;display:flex;align-items:center;gap:6px;}
+    padding:max(13px,env(safe-area-inset-top)) 16px 13px;display:flex;align-items:center;gap:10px;min-height:54px;}
+  .head .ttl{font-size:17px;font-weight:700;}
+  .head .back{background:none;border:0;color:#fff;font-size:22px;padding:0 4px 0 0;}
+  .head .act{margin-left:auto;background:rgba(255,255,255,.2);border:0;color:#fff;
+    min-width:40px;height:40px;border-radius:20px;font-size:15px;font-weight:700;padding:0 14px;}
+  #content{padding:14px 14px calc(var(--navh) + 24px);max-width:600px;margin:0 auto;}
+  .date{font-size:20px;font-weight:700;margin:4px 2px 12px;}
+  .sec{font-size:13px;font-weight:700;color:var(--soft);margin:18px 4px 8px;}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
-    box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;}
+    box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;margin-bottom:4px;}
   .task{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);min-height:62px;}
-  .task:last-child{border-bottom:0;}
-  .task:active{background:#f2f4f6;}
+  .task:last-child{border-bottom:0;} .task:active{background:#f2f4f6;}
   .chk{width:30px;height:30px;flex:none;border:2px solid #cfd4da;border-radius:50%;
     display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;transition:.15s;}
   .chk.on{background:var(--done);border-color:var(--done);}
-  .task .body{flex:1;min-width:0;}
-  .task .t{font-size:16px;font-weight:500;}
+  .chk.sq{border-radius:8px;}
+  .task .body{flex:1;min-width:0;} .task .t{font-size:16px;font-weight:500;}
   .task.done .t{color:var(--faint);text-decoration:line-through;}
   .task .sub{font-size:13px;color:var(--soft);margin-top:2px;}
   .late .task .t{color:var(--warn);}
   .empty{padding:22px 16px;text-align:center;color:var(--faint);}
   .ev{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);font-size:15px;}
-  .ev:last-child{border-bottom:0;}
-  .ev .k{color:var(--soft);}
-  .ev .v{font-weight:500;}
-  .center{display:flex;flex-direction:column;align-items:center;justify-content:center;
-    min-height:80vh;padding:30px;text-align:center;gap:14px;}
+  .ev:last-child{border-bottom:0;} .ev .k{color:var(--soft);} .ev .v{font-weight:500;text-align:right;}
+  /* 予約カード */
+  .rc{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);}
+  .rc:last-child{border-bottom:0;} .rc:active{background:#f2f4f6;}
+  .rc .bar{width:5px;align-self:stretch;border-radius:3px;flex:none;}
+  .rc .body{flex:1;min-width:0;}
+  .rc .nm{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rc .meta{font-size:13px;color:var(--soft);margin-top:2px;}
+  .rc .chev{color:var(--faint);font-size:20px;}
+  .chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
+  .c-bk{background:#E3EEF9;color:var(--bk);} .c-ab{background:#FBE4EC;color:var(--ab);}
+  .c-ps{background:#E5F1E6;color:var(--ps);} .c-stop{background:#EEF0F2;color:var(--stop);}
+  /* フォーム */
+  label{display:block;font-size:13px;color:var(--soft);margin:14px 2px 6px;font-weight:500;}
+  input,textarea,select{width:100%;font-size:16px;font-family:inherit;color:var(--text);
+    background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 13px;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--line);box-shadow:0 0 0 3px rgba(6,199,85,.12);}
+  textarea{min-height:90px;resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .seg{display:flex;gap:8px;margin-top:4px;}
+  .seg button{flex:1;padding:13px;border:1px solid var(--border);background:#fff;border-radius:10px;font-size:15px;font-weight:700;color:var(--soft);}
+  .seg button.on{background:var(--line);color:#fff;border-color:var(--line);}
+  .btn{width:100%;background:var(--line);color:#fff;border:0;border-radius:12px;padding:15px;font-size:16px;font-weight:700;margin-top:20px;}
+  .btn:active{background:var(--line-d);}
+  .btn.sub{background:#fff;color:var(--text);border:1px solid var(--border);}
+  .btn.dang{background:#fff;color:var(--danger);border:1px solid var(--border);}
+  .out{white-space:pre-wrap;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;font-size:15px;line-height:1.8;min-height:120px;}
+  .fact{padding:13px 16px;border-bottom:1px solid var(--border);font-size:15px;}
+  .fact:last-child{border-bottom:0;} .fact .k{color:var(--soft);font-size:13px;}
+  /* nav */
+  .nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--navh) + env(safe-area-inset-bottom));
+    background:#fff;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);
+    padding-bottom:env(safe-area-inset-bottom);z-index:20;}
+  .nav button{background:none;border:0;color:var(--soft);display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:3px;font-size:11px;font-weight:700;}
+  .nav button .i{font-size:21px;}
+  .nav button.on{color:var(--line);}
+  .center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:30px;text-align:center;gap:14px;}
   .spin{width:34px;height:34px;border:3px solid #e3e6ea;border-top-color:var(--line);border-radius:50%;animation:s 1s linear infinite;}
   @keyframes s{to{transform:rotate(360deg);}}
-  .btn{background:var(--line);color:#fff;border:0;border-radius:12px;padding:14px 24px;font-size:16px;font-weight:700;}
-  .idbox{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;
-    font-size:14px;word-break:break-all;color:var(--text);}
+  .idbox{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-size:14px;word-break:break-all;}
   .idbox b{display:block;font-size:18px;margin-top:6px;color:var(--line-d);}
-  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1F2328;color:#fff;
+  #toast{position:fixed;bottom:calc(var(--navh) + 24px);left:50%;transform:translateX(-50%);background:#1F2328;color:#fff;
     padding:11px 20px;border-radius:24px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:99;white-space:nowrap;}
   #toast.show{opacity:1;}
 </style>
 </head>
 <body>
-<div id="app"><div class="center"><div class="spin"></div><div style="color:#6B7280">読み込み中…</div></div></div>
+<div id="content"><div class="center"><div class="spin"></div><div style="color:#6B7280">読み込み中…</div></div></div>
+<nav class="nav" id="nav" style="display:none">
+  <button data-s="today" class="on"><span class="i">⭐</span><span>今日</span></button>
+  <button data-s="list"><span class="i">📋</span><span>予約</span></button>
+  <button data-s="add"><span class="i">＋</span><span>追加</span></button>
+  <button data-s="msg"><span class="i">✉️</span><span>メッセージ</span></button>
+</nav>
 <div id="toast"></div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-  var LIFF_ID = '2010467474-F0WkGdDW';
-  var API = 'https://script.google.com/macros/s/AKfycbya86LLxu2tq-8br3eWhjcyC0bd1yfkIPD7YR60fATxC1DX5k24xAI7Bs0cmDFNnOE6/exec';
-  var ID_TOKEN = '';
-  var app = document.getElementById('app');
+  var LIFF_ID='2010467474-F0WkGdDW';
+  var API='https://script.google.com/macros/s/AKfycbya86LLxu2tq-8br3eWhjcyC0bd1yfkIPD7YR60fATxC1DX5k24xAI7Bs0cmDFNnOE6/exec';
+  var ID_TOKEN='', STATE={res:[], tpl:[], addType:'予約', screen:'today'};
+  var C=document.getElementById('content'), NAV=document.getElementById('nav');
 
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);});}
   function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2000);}
+  function api(action,params){params=params||{};var q='?action='+encodeURIComponent(action)+'&idToken='+encodeURIComponent(ID_TOKEN);
+    Object.keys(params).forEach(function(k){q+='&'+k+'='+encodeURIComponent(params[k]);});
+    return fetch(API+q).then(function(r){return r.json();}).then(function(j){if(!j.ok)throw new Error(j.error||'error');return j.data;});}
 
-  // API 呼び出し（全部 GET。idToken を必ず付ける）
-  function api(action, params){
-    params = params || {};
-    var q = '?action=' + encodeURIComponent(action) + '&idToken=' + encodeURIComponent(ID_TOKEN);
-    Object.keys(params).forEach(function(k){ q += '&' + k + '=' + encodeURIComponent(params[k]); });
-    return fetch(API + q).then(function(r){ return r.json(); }).then(function(j){
-      if(!j.ok) throw new Error(j.error || 'error');
-      return j.data;
-    });
-  }
-
+  // ---- 起動 ----
   function boot(){
-    liff.init({ liffId: LIFF_ID }).then(function(){
-      if(!liff.isLoggedIn()){ liff.login(); return; }
-      ID_TOKEN = liff.getIDToken();
-      // まず本人確認（許可リストにいるか）
-      api('whoami', {}).then(function(me){
-        if(!me.allowed){ renderNotAllowed(me.userId); return; }
-        loadToday();
-      }).catch(function(e){ renderError(e.message); });
-    }).catch(function(e){ renderError('LIFF初期化エラー: ' + e.message); });
+    liff.init({liffId:LIFF_ID}).then(function(){
+      if(!liff.isLoggedIn()){liff.login();return;}
+      ID_TOKEN=liff.getIDToken();
+      api('whoami',{}).then(function(me){
+        if(!me.allowed){renderNotAllowed(me.userId);return;}
+        NAV.style.display='grid';
+        bindNav();
+        go('today');
+      }).catch(function(e){renderError(e.message);});
+    }).catch(function(e){renderError('LIFF初期化エラー: '+e.message);});
   }
+  function bindNav(){NAV.querySelectorAll('button').forEach(function(b){b.onclick=function(){go(b.dataset.s);};});}
+  function setNav(s){NAV.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.s===s);});}
+  function go(s){STATE.screen=s;setNav(s);
+    if(s==='today')loadToday();
+    else if(s==='list')loadList();
+    else if(s==='add')renderAdd();
+    else if(s==='msg')loadMsg();}
 
-  function renderNotAllowed(uid){
-    app.innerHTML =
-      '<div class="center">'+
-      '<div style="font-size:40px">🔒</div>'+
-      '<div style="font-weight:700;font-size:18px">登録が必要です</div>'+
-      '<div style="color:#6B7280">このアプリを使うには登録が必要です。<br>下のIDを森本さんに伝えてください。</div>'+
-      '<div class="idbox">あなたのLINE ID<b>'+esc(uid)+'</b></div>'+
-      '</div>';
-  }
-  function renderError(msg){
-    app.innerHTML='<div class="center"><div style="font-size:34px">⚠️</div><div style="color:#6B7280">'+esc(msg)+'</div><button class="btn" onclick="location.reload()">再読み込み</button></div>';
-  }
+  function renderNotAllowed(uid){C.innerHTML='<div class="center"><div style="font-size:40px">🔒</div><div style="font-weight:700;font-size:18px">登録が必要です</div><div style="color:#6B7280">下のIDを森本さんに伝えてください。</div><div class="idbox">あなたのLINE ID<b>'+esc(uid)+'</b></div></div>';}
+  function renderError(m){C.innerHTML='<div class="center"><div style="font-size:34px">⚠️</div><div style="color:#6B7280">'+esc(m)+'</div><button class="btn" style="max-width:200px" onclick="location.reload()">再読み込み</button></div>';}
+  function head(title,opts){opts=opts||{};return '<div class="head">'+(opts.back?'<button class="back" onclick="'+opts.back+'">‹</button>':'')+'<span class="ttl">'+esc(title)+'</span>'+(opts.act?'<button class="act" onclick="'+opts.act.fn+'">'+esc(opts.act.label)+'</button>':'')+'</div>';}
 
-  function loadToday(){
-    app.innerHTML='<div class="center"><div class="spin"></div></div>';
-    api('today', {}).then(renderToday).catch(function(e){ renderError(e.message); });
-  }
-
+  // ===== 今日 =====
+  function loadToday(){C.innerHTML='<div class="center"><div class="spin"></div></div>';api('today',{}).then(renderToday).catch(function(e){renderError(e.message);});}
   function renderToday(d){
-    var h = '';
-    h += '<div class="head"><span class="ttl">KURA 今日のやること</span>'+
-         '<button class="sync" onclick="loadToday()" title="更新">↻</button></div>';
-    h += '<div class="wrap">';
-    h += '<div class="date">'+esc(formatDateJa(d.date))+'</div>';
+    var h=head('今日のやること',{act:{label:'↻',fn:'loadToday()'}})+'<div id="cw">';
+    h+='<div class="date">'+esc(fmtJa(d.date))+'</div>';
+    h+='<div class="sec">📋 今日やること</div>';
+    if(!d.todays||!d.todays.length)h+='<div class="card"><div class="empty">今日やる作業はありません 🎉</div></div>';
+    else{h+='<div class="card">';d.todays.forEach(function(t){h+=trow(t,false);});h+='</div>';}
+    if(d.late&&d.late.length){h+='<div class="sec">⚠️ まだ終わってない</div><div class="card late">';d.late.forEach(function(t){h+=trow(t,true);});h+='</div>';}
+    h+='<div class="sec">📌 直近のイベント</div><div class="card">';
+    h+=ev('今日チェックイン',(d.todayIn&&d.todayIn.length)?d.todayIn.join('、'):'なし');
+    h+=ev('今日チェックアウト',(d.todayOut&&d.todayOut.length)?d.todayOut.join('、'):'なし');
+    h+=ev('次のチェックイン',d.nextIn?(d.nextIn.name+'  '+d.nextIn.date+'（あと'+d.nextIn.d+'日）'):'予定なし');
+    h+='</div></div>';
+    C.innerHTML=h;
+  }
+  function trow(t,late){var done=!!t.done;return '<div class="task'+(done?' done':'')+'" onclick="toggle(\''+esc(t.uid)+'\',\''+esc(t.col)+'\','+done+')"><div class="chk'+(done?' on':'')+'">'+(done?'✓':'')+'</div><div class="body"><div class="t">'+esc(t.task)+'</div><div class="sub">'+esc(t.name)+(late?'・遅れ':'')+'</div></div></div>';}
+  function ev(k,v){return '<div class="ev"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>';}
+  function toggle(uid,col,done){if(!uid){toast('更新できません');return;}toast(!done?'完了にしました':'戻しました');api('toggleTask',{uid:uid,taskKey:col,value:!done}).then(loadToday).catch(function(e){toast('エラー: '+e.message);});}
 
-    // 今日やること
-    h += '<div class="sec">📋 今日やること</div>';
-    if(!d.todays || d.todays.length===0){
-      h += '<div class="card"><div class="empty">今日やる作業はありません 🎉</div></div>';
-    }else{
-      h += '<div class="card">';
-      d.todays.forEach(function(t){
-        h += taskRow(t,false);
+  // ===== 予約一覧 =====
+  function loadList(){C.innerHTML='<div class="center"><div class="spin"></div></div>';api('list',{}).then(function(d){STATE.res=d.items||[];renderList();}).catch(function(e){renderError(e.message);});}
+  function renderList(){
+    var items=STATE.res.filter(function(r){return !r.cancelled;}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});
+    var today=todayStr();var up=items.filter(function(r){return r.out>=today;});var past=items.filter(function(r){return r.out<today;}).reverse();
+    var h=head('予約一覧',{act:{label:'＋追加',fn:"go('add')"}})+'<div>';
+    h+='<div class="sec">これから・滞在中</div>';
+    if(!up.length)h+='<div class="card"><div class="empty">予約なし</div></div>';
+    else{h+='<div class="card">';up.forEach(function(r){h+=rcard(r);});h+='</div>';}
+    if(past.length){h+='<div class="sec">過去</div><div class="card">';past.slice(0,20).forEach(function(r){h+=rcard(r);});h+='</div>';}
+    h+='</div>';C.innerHTML=h;
+  }
+  function chInfo(r){var t=r.type;if(t==='売り止め'||t==='ブロック')return {cls:'c-stop',bar:'var(--stop)',lbl:'売り止め'};
+    if(r.channel==='エアビー')return {cls:'c-ab',bar:'var(--ab)',lbl:'Airbnb'};
+    if(r.channel==='ブッキング')return {cls:'c-bk',bar:'var(--bk)',lbl:'Booking'};
+    return {cls:'c-ps',bar:'var(--ps)',lbl:'個人'};}
+  function rcard(r){var ci=chInfo(r);var nm=r.name||(r.type==='売り止め'?'売り止め':'(名前未入力)');
+    return '<div class="rc" onclick="detail(\''+esc(r.uid)+'\')"><div class="bar" style="background:'+ci.bar+'"></div><div class="body"><div class="nm">'+esc(nm)+'</div><div class="meta"><span class="chip '+ci.cls+'">'+ci.lbl+'</span> '+esc(fmtMd(r.in))+'→'+esc(fmtMd(r.out))+'・'+esc(r.nights)+'泊'+(r.adults?'・'+esc(r.adults)+'名':'')+'</div></div><div class="chev">›</div></div>';}
+
+  // ===== 詳細 =====
+  function findRes(uid){return STATE.res.filter(function(r){return r.uid===uid;})[0];}
+  function detail(uid){
+    if(!STATE.res.length){api('list',{}).then(function(d){STATE.res=d.items||[];detail(uid);});return;}
+    var r=findRes(uid);if(!r){toast('見つかりません');return;}
+    var ci=chInfo(r);var nm=r.name||'(名前未入力)';
+    var h=head(nm,{back:"go('list')",act:{label:'編集',fn:"editRes('"+esc(uid)+"')"}})+'<div>';
+    h+='<div class="card" style="margin-top:8px"><div style="padding:14px 16px"><span class="chip '+ci.cls+'">'+ci.lbl+'</span></div>';
+    h+=fact('日程',fmtMd(r.in)+' → '+fmtMd(r.out)+'（'+r.nights+'泊）');
+    if(r.type!=='売り止め'){h+=fact('人数',(r.adults||'-')+'名');h+=fact('金額',r.amount?('¥'+Number(r.amount).toLocaleString()):'-');
+      if(r.phone)h+=fact('電話',r.phone);if(r.email)h+=fact('メール',r.email);}
+    if(r.lastContact)h+=fact('最終やりとり',r.lastContact);
+    h+='</div>';
+    if(r.type!=='売り止め'){
+      h+='<div class="sec">✅ やること</div><div class="card">';
+      [['予約お礼','予約お礼を送る'],['7日前','7日前メッセ'],['前日','前日メッセ（入り方）'],['宿泊お礼','宿泊お礼'],['清掃済','清掃']].forEach(function(p){
+        var done=!!(r.tasks&&r.tasks[p[0]]);
+        h+='<div class="task'+(done?' done':'')+'" onclick="toggleD(\''+esc(uid)+'\',\''+p[0]+'\','+done+')"><div class="chk sq'+(done?' on':'')+'">'+(done?'✓':'')+'</div><div class="body"><div class="t">'+p[1]+'</div></div></div>';
       });
-      h += '</div>';
+      h+='</div>';
+      h+='<div class="sec">📝 メモ</div><div class="card"><div style="padding:14px 16px;white-space:pre-wrap;min-height:30px;color:'+(r.notes?'inherit':'var(--faint)')+'">'+esc(r.notes||'（メモなし）')+'</div></div>';
+      h+='<button class="btn" onclick="go(\'msg\');setTimeout(function(){selMsg(\''+esc(uid)+'\');},50)">✉️ メッセージを作る</button>';
     }
+    h+='</div>';C.innerHTML=h;
+  }
+  function fact(k,v){return '<div class="fact"><div class="k">'+esc(k)+'</div><div>'+esc(v)+'</div></div>';}
+  function toggleD(uid,col,done){var r=findRes(uid);if(r&&r.tasks)r.tasks[col]=!done;detail(uid);toast(!done?'完了にしました':'戻しました');
+    api('toggleTask',{uid:uid,taskKey:col,value:!done}).catch(function(e){toast('エラー: '+e.message);});}
 
-    // 遅れ
-    if(d.late && d.late.length){
-      h += '<div class="sec">⚠️ まだ終わってない</div><div class="card late">';
-      d.late.forEach(function(t){ h += taskRow(t,true); });
-      h += '</div>';
-    }
+  // ===== 編集 =====
+  function editRes(uid){var r=findRes(uid);if(!r){toast('見つかりません');return;}
+    var stop=(r.type==='売り止め');
+    var h=head('編集',{back:"detail('"+esc(uid)+"')"})+'<div>';
+    h+=field('お客さん名','e_name',r.name||'');
+    h+='<div class="row2">'+field('IN(YYYY-MM-DD)','e_in',r.in||'')+field('OUT','e_out',r.out||'')+'</div>';
+    h+='<div class="row2">'+field('人数','e_ad',r.adults||'','number')+field('金額','e_am',r.amount||'','number')+'</div>';
+    h+=field('電話','e_ph',r.phone||'');h+=field('メール','e_em',r.email||'');
+    h+=field('最終やりとり日(YYYY-MM-DD)','e_lc',r.lastContact||'');
+    h+='<label>メモ</label><textarea id="e_no">'+esc(r.notes||'')+'</textarea>';
+    h+='<button class="btn" onclick="saveEdit(\''+esc(uid)+'\')">保存</button>';
+    h+='<button class="btn dang" onclick="cancelRes(\''+esc(uid)+'\')">この予約をキャンセル</button>';
+    h+='</div>';C.innerHTML=h;
+  }
+  function field(label,id,val,type){return '<label>'+esc(label)+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val)+'">';}
+  function val(id){var e=document.getElementById(id);return e?e.value:'';}
+  function saveEdit(uid){
+    var patch={'お客さん名':val('e_name'),'IN':val('e_in'),'OUT':val('e_out'),'人数':val('e_ad'),'金額':val('e_am'),'電話':val('e_ph'),'メール':val('e_em'),'最終やりとり日':val('e_lc'),'メモ':val('e_no')};
+    toast('保存中…');
+    api('update',{payload:JSON.stringify({uid:uid,patch:patch})}).then(function(){
+      return api('list',{}).then(function(d){STATE.res=d.items||[];toast('保存しました');detail(uid);});
+    }).catch(function(e){toast('エラー: '+e.message);});
+  }
+  function cancelRes(uid){if(!confirm('この予約をキャンセルにしますか？'))return;
+    api('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){toast('キャンセルにしました');loadList();}).catch(function(e){toast('エラー: '+e.message);});}
 
-    // 直近イベント
-    h += '<div class="sec">📌 直近のイベント</div><div class="card">';
-    h += ev('今日チェックイン', (d.todayIn&&d.todayIn.length)?d.todayIn.join('、'):'なし');
-    h += ev('今日チェックアウト', (d.todayOut&&d.todayOut.length)?d.todayOut.join('、'):'なし');
-    h += ev('次のチェックイン', d.nextIn ? (d.nextIn.name+'  '+d.nextIn.date+'（あと'+d.nextIn.d+'日）') : '予定なし');
-    h += '</div>';
-
-    h += '</div>';
-    app.innerHTML = h;
+  // ===== 予約追加 =====
+  function renderAdd(){
+    var stop=(STATE.addType==='売り止め');
+    var h=head('予約を追加')+'<div>';
+    h+='<label>種別</label><div class="seg"><button class="'+(!stop?'on':'')+'" onclick="setAddType(\'予約\')">お客さんの予約</button><button class="'+(stop?'on':'')+'" onclick="setAddType(\'売り止め\')">売り止め</button></div>';
+    if(!stop)h+=field('お客さん名 *','a_name','');
+    h+='<div class="row2">'+field('IN(YYYY-MM-DD) *','a_in',todayStr())+field('OUT *','a_out',addStr(1))+'</div>';
+    if(!stop){h+='<div class="row2">'+field('大人 *','a_ad','2','number')+field('子供','a_ch','0','number')+'</div>';
+      h+=field('金額','a_am','','number');h+=field('電話','a_ph','');h+=field('メール','a_em','');}
+    h+='<label>メモ'+(stop?'（理由）':'')+'</label><textarea id="a_no"></textarea>';
+    h+='<button class="btn" onclick="submitAdd()">登録する</button></div>';
+    C.innerHTML=h;
+  }
+  function setAddType(t){STATE.addType=t;renderAdd();}
+  function submitAdd(){
+    var stop=(STATE.addType==='売り止め');
+    if(!val('a_in')||!val('a_out')){toast('IN/OUTを入力してください');return;}
+    if(!stop&&!val('a_name').trim()){toast('お客さん名を入力してください');return;}
+    var payload={entry_type:STATE.addType,check_in:val('a_in'),check_out:val('a_out'),guest_name:val('a_name'),
+      num_adults:val('a_ad'),amount:val('a_am'),phone:val('a_ph'),email:val('a_em'),notes:val('a_no'),block_reason:val('a_no')};
+    toast('登録中…');
+    api('add',{payload:JSON.stringify(payload)}).then(function(res){
+      return api('list',{}).then(function(d){STATE.res=d.items||[];toast('登録しました ✓');detail(res.uid);});
+    }).catch(function(e){toast('エラー: '+e.message);});
   }
 
-  function taskRow(t, isLate){
-    var done = !!t.done;
-    return '<div class="task'+(done?' done':'')+'" onclick="toggle(\''+esc(t.uid)+'\',\''+esc(t.col)+'\','+done+')">'+
-      '<div class="chk'+(done?' on':'')+'">'+(done?'✓':'')+'</div>'+
-      '<div class="body"><div class="t">'+esc(t.task)+'</div><div class="sub">'+esc(t.name)+(isLate?'・遅れ':'')+'</div></div>'+
-      '</div>';
+  // ===== メッセージ =====
+  function loadMsg(){C.innerHTML='<div class="center"><div class="spin"></div></div>';
+    Promise.all([api('list',{}),api('templates',{})]).then(function(a){STATE.res=a[0].items||[];STATE.tpl=a[1].items||[];renderMsg();}).catch(function(e){renderError(e.message);});}
+  function renderMsg(sel){
+    var items=STATE.res.filter(function(r){return !r.cancelled&&r.type!=='売り止め';}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});
+    var h=head('メッセージ作成')+'<div>';
+    h+='<label>お客さん</label><select id="m_res" onchange="m_render()"><option value="">選んでください</option>';
+    items.forEach(function(r){var s=(sel===r.uid)?' selected':'';h+='<option value="'+esc(r.uid)+'"'+s+'>'+esc(r.name||'(名前未入力)')+'（'+fmtMd(r.in)+'）</option>';});
+    h+='</select>';
+    h+='<label>文例</label><select id="m_tpl" onchange="m_render()"><option value="">選んでください</option>';
+    STATE.tpl.forEach(function(t){h+='<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>';});
+    h+='</select>';
+    h+='<label>言語</label><select id="m_lang" onchange="m_render()"><option value="ja">日本語</option><option value="en">English</option></select>';
+    h+=field('暗証番号（前日メッセ用）','m_code','');
+    document.getElementById&&0;
+    h+='<label style="margin-top:18px">↓ 完成メッセージ</label><div class="out" id="m_out">お客さんと文例を選んでください</div>';
+    h+='<button class="btn" onclick="m_copy()">📋 コピーする</button></div>';
+    C.innerHTML=h;
+    var mc=document.getElementById('m_code');if(mc)mc.oninput=m_render;
+    m_render();
   }
-  function ev(k,v){ return '<div class="ev"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>'; }
+  function selMsg(uid){loadMsg();setTimeout(function(){var s=document.getElementById('m_res');if(s){s.value=uid;m_render();}},400);}
+  function m_render(){
+    var out=document.getElementById('m_out');if(!out)return;
+    var uid=val('m_res'),tn=val('m_tpl'),lang=val('m_lang')||'ja',code=val('m_code');
+    if(!uid||!tn){out.textContent='お客さんと文例を選んでください';return;}
+    var r=findRes(uid),t=STATE.tpl.filter(function(x){return x.name===tn;})[0];
+    if(!r||!t){out.textContent='—';return;}
+    var body=(lang==='en')?(t.en||''):(t.ja||'');
+    var nm=r.name||'お客';
+    body=body.replace(/\{お客さん名\}/g,nm).replace(/\{guest name\}/g,nm)
+      .replace(/\{IN日\}/g,fmtJaShort(r.in)).replace(/\{check-in date\}/g,fmtMd(r.in))
+      .replace(/\{OUT日\}/g,fmtJaShort(r.out)).replace(/\{check-out date\}/g,fmtMd(r.out))
+      .replace(/\{暗証番号\}/g,code||'____').replace(/\{door code\}/g,code||'____');
+    out.textContent=body;
+  }
+  function m_copy(){var txt=document.getElementById('m_out').textContent;
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast('コピーしました ✓');},function(){fallbackCopy(txt);});}
+    else fallbackCopy(txt);}
+  function fallbackCopy(txt){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('コピーしました ✓');}catch(e){toast('コピー失敗。長押しで選択して');}document.body.removeChild(ta);}
 
-  function toggle(uid, col, currentlyDone){
-    if(!uid){ toast('この項目は更新できません'); return; }
-    var next = !currentlyDone;
-    toast(next?'完了にしました':'未完了に戻しました');
-    api('toggleTask', { uid: uid, taskKey: col, value: next }).then(function(){
-      loadToday();
-    }).catch(function(e){ toast('エラー: '+e.message); });
-  }
-
-  function formatDateJa(s){
-    if(!s) return '';
-    var p=String(s).split('-'); if(p.length!==3) return s;
-    var wd=['日','月','火','水','木','金','土'];
-    var dt=new Date(+p[0],+p[1]-1,+p[2]);
-    return (+p[0])+'年'+(+p[1])+'月'+(+p[2])+'日（'+wd[dt.getDay()]+'）';
-  }
+  // ---- 日付 ----
+  function todayStr(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+  function addStr(n){var d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+  function p2(n){return (n<10?'0':'')+n;}
+  function fmtMd(s){if(!s)return '';var p=String(s).split('-');return p.length===3?(+p[1])+'/'+(+p[2]):s;}
+  function fmtJaShort(s){if(!s)return '';var p=String(s).split('-');return p.length===3?(+p[1])+'月'+(+p[2])+'日':s;}
+  function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)return s;var wd=['日','月','火','水','木','金','土'];var dt=new Date(+p[0],+p[1]-1,+p[2]);return (+p[0])+'年'+(+p[1])+'月'+(+p[2])+'日（'+wd[dt.getDay()]+'）';}
 
   boot();
 </script>
