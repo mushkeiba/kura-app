@@ -107,14 +107,17 @@ var App={
   template:'#tpl'
 };
 
-var vuetify=Vuetify.createVuetify({
-  theme:{defaultTheme:'kura',themes:{kura:{dark:false,colors:{
-    primary:'#06C755', secondary:'#05a948', surface:'#FFFFFF', background:'#F5F7F8',
-    error:'#DC2626', warning:'#B7791F'
-  }}}},
-  defaults:{ VCard:{rounded:'lg'}, VBtn:{rounded:'lg'} }
+// テンプレート(#tpl)はこのスクリプトより後ろにあるので、DOM読み込み完了を待ってからmount
+document.addEventListener('DOMContentLoaded', function(){
+  var vuetify=Vuetify.createVuetify({
+    theme:{defaultTheme:'kura',themes:{kura:{dark:false,colors:{
+      primary:'#06C755', secondary:'#05a948', surface:'#FFFFFF', background:'#F5F7F8',
+      error:'#DC2626', warning:'#B7791F'
+    }}}},
+    defaults:{ VCard:{rounded:'lg'}, VBtn:{rounded:'lg'} }
+  });
+  Vue.createApp(App).use(vuetify).mount('#app');
 });
-Vue.createApp(App).use(vuetify).mount('#app');
 </script>
 
 <!-- Vue テンプレート -->
