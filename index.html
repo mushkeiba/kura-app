@@ -48,7 +48,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v15', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v16', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -415,8 +415,12 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="text-medium-emphasis text-caption font-weight-bold mb-1">📝 メモ</div>
             <v-card class="mb-4"><v-card-text style="white-space:pre-wrap" :class="detail.notes?'':'text-medium-emphasis'">{{ detail.notes||'（メモなし）' }}</v-card-text></v-card>
 
-            <v-btn color="primary" block size="large" prepend-icon="mdi-email-outline" @click="openMsgFor(detail.uid)">メッセージを作る</v-btn>
+            <div class="d-flex" style="gap:10px">
+              <v-btn color="primary" variant="outlined" size="large" style="flex:1" prepend-icon="mdi-pencil" @click="openEdit">編集</v-btn>
+              <v-btn color="primary" size="large" style="flex:1" prepend-icon="mdi-email-outline" @click="openMsgFor(detail.uid)">メッセージ</v-btn>
+            </div>
           </template>
+          <v-btn v-if="detail.type==='売り止め'" color="primary" variant="outlined" block size="large" prepend-icon="mdi-pencil" @click="openEdit">編集</v-btn>
         </v-card-text>
       </v-card>
     </v-dialog>
