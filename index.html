@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>KURA 予約</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --line:#06C755; --line-d:#05a948;
+    --bg:#F7F8FA; --surface:#FFFFFF; --border:#E6E8EB;
+    --text:#1F2328; --soft:#6B7280; --faint:#9AA0AA;
+    --done:#06C755; --warn:#B7791F; --warn-bg:#FCF3DC;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:"Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:24px;}
+  .head{position:sticky;top:0;z-index:10;background:var(--line);color:#fff;
+    padding:max(14px,env(safe-area-inset-top)) 16px 14px;display:flex;align-items:center;gap:10px;}
+  .head .ttl{font-size:18px;font-weight:700;}
+  .head .sync{margin-left:auto;background:rgba(255,255,255,.2);border:0;color:#fff;
+    width:40px;height:40px;border-radius:50%;font-size:18px;}
+  .wrap{padding:14px;max-width:600px;margin:0 auto;}
+  .date{font-size:20px;font-weight:700;margin:6px 2px 14px;}
+  .sec{font-size:14px;font-weight:700;color:var(--soft);margin:18px 4px 8px;display:flex;align-items:center;gap:6px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;}
+  .task{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);min-height:62px;}
+  .task:last-child{border-bottom:0;}
+  .task:active{background:#f2f4f6;}
+  .chk{width:30px;height:30px;flex:none;border:2px solid #cfd4da;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;transition:.15s;}
+  .chk.on{background:var(--done);border-color:var(--done);}
+  .task .body{flex:1;min-width:0;}
+  .task .t{font-size:16px;font-weight:500;}
+  .task.done .t{color:var(--faint);text-decoration:line-through;}
+  .task .sub{font-size:13px;color:var(--soft);margin-top:2px;}
+  .late .task .t{color:var(--warn);}
+  .empty{padding:22px 16px;text-align:center;color:var(--faint);}
+  .ev{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);font-size:15px;}
+  .ev:last-child{border-bottom:0;}
+  .ev .k{color:var(--soft);}
+  .ev .v{font-weight:500;}
+  .center{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:80vh;padding:30px;text-align:center;gap:14px;}
+  .spin{width:34px;height:34px;border:3px solid #e3e6ea;border-top-color:var(--line);border-radius:50%;animation:s 1s linear infinite;}
+  @keyframes s{to{transform:rotate(360deg);}}
+  .btn{background:var(--line);color:#fff;border:0;border-radius:12px;padding:14px 24px;font-size:16px;font-weight:700;}
+  .idbox{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;
+    font-size:14px;word-break:break-all;color:var(--text);}
+  .idbox b{display:block;font-size:18px;margin-top:6px;color:var(--line-d);}
+  #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1F2328;color:#fff;
+    padding:11px 20px;border-radius:24px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:99;white-space:nowrap;}
+  #toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div id="app"><div class="center"><div class="spin"></div><div style="color:#6B7280">読み込み中…</div></div></div>
+<div id="toast"></div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+  var LIFF_ID = '2010467474-F0WkGdDW';
+  var API = 'https://script.google.com/macros/s/AKfycbya86LLxu2tq-8br3eWhjcyC0bd1yfkIPD7YR60fATxC1DX5k24xAI7Bs0cmDFNnOE6/exec';
+  var ID_TOKEN = '';
+  var app = document.getElementById('app');
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);});}
+  function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2000);}
+
+  // API 呼び出し（全部 GET。idToken を必ず付ける）
+  function api(action, params){
+    params = params || {};
+    var q = '?action=' + encodeURIComponent(action) + '&idToken=' + encodeURIComponent(ID_TOKEN);
+    Object.keys(params).forEach(function(k){ q += '&' + k + '=' + encodeURIComponent(params[k]); });
+    return fetch(API + q).then(function(r){ return r.json(); }).then(function(j){
+      if(!j.ok) throw new Error(j.error || 'error');
+      return j.data;
+    });
+  }
+
+  function boot(){
+    liff.init({ liffId: LIFF_ID }).then(function(){
+      if(!liff.isLoggedIn()){ liff.login(); return; }
+      ID_TOKEN = liff.getIDToken();
+      // まず本人確認（許可リストにいるか）
+      api('whoami', {}).then(function(me){
+        if(!me.allowed){ renderNotAllowed(me.userId); return; }
+        loadToday();
+      }).catch(function(e){ renderError(e.message); });
+    }).catch(function(e){ renderError('LIFF初期化エラー: ' + e.message); });
+  }
+
+  function renderNotAllowed(uid){
+    app.innerHTML =
+      '<div class="center">'+
+      '<div style="font-size:40px">🔒</div>'+
+      '<div style="font-weight:700;font-size:18px">登録が必要です</div>'+
+      '<div style="color:#6B7280">このアプリを使うには登録が必要です。<br>下のIDを森本さんに伝えてください。</div>'+
+      '<div class="idbox">あなたのLINE ID<b>'+esc(uid)+'</b></div>'+
+      '</div>';
+  }
+  function renderError(msg){
+    app.innerHTML='<div class="center"><div style="font-size:34px">⚠️</div><div style="color:#6B7280">'+esc(msg)+'</div><button class="btn" onclick="location.reload()">再読み込み</button></div>';
+  }
+
+  function loadToday(){
+    app.innerHTML='<div class="center"><div class="spin"></div></div>';
+    api('today', {}).then(renderToday).catch(function(e){ renderError(e.message); });
+  }
+
+  function renderToday(d){
+    var h = '';
+    h += '<div class="head"><span class="ttl">KURA 今日のやること</span>'+
+         '<button class="sync" onclick="loadToday()" title="更新">↻</button></div>';
+    h += '<div class="wrap">';
+    h += '<div class="date">'+esc(formatDateJa(d.date))+'</div>';
+
+    // 今日やること
+    h += '<div class="sec">📋 今日やること</div>';
+    if(!d.todays || d.todays.length===0){
+      h += '<div class="card"><div class="empty">今日やる作業はありません 🎉</div></div>';
+    }else{
+      h += '<div class="card">';
+      d.todays.forEach(function(t){
+        h += taskRow(t,false);
+      });
+      h += '</div>';
+    }
+
+    // 遅れ
+    if(d.late && d.late.length){
+      h += '<div class="sec">⚠️ まだ終わってない</div><div class="card late">';
+      d.late.forEach(function(t){ h += taskRow(t,true); });
+      h += '</div>';
+    }
+
+    // 直近イベント
+    h += '<div class="sec">📌 直近のイベント</div><div class="card">';
+    h += ev('今日チェックイン', (d.todayIn&&d.todayIn.length)?d.todayIn.join('、'):'なし');
+    h += ev('今日チェックアウト', (d.todayOut&&d.todayOut.length)?d.todayOut.join('、'):'なし');
+    h += ev('次のチェックイン', d.nextIn ? (d.nextIn.name+'  '+d.nextIn.date+'（あと'+d.nextIn.d+'日）') : '予定なし');
+    h += '</div>';
+
+    h += '</div>';
+    app.innerHTML = h;
+  }
+
+  function taskRow(t, isLate){
+    var done = !!t.done;
+    return '<div class="task'+(done?' done':'')+'" onclick="toggle(\''+esc(t.uid)+'\',\''+esc(t.col)+'\','+done+')">'+
+      '<div class="chk'+(done?' on':'')+'">'+(done?'✓':'')+'</div>'+
+      '<div class="body"><div class="t">'+esc(t.task)+'</div><div class="sub">'+esc(t.name)+(isLate?'・遅れ':'')+'</div></div>'+
+      '</div>';
+  }
+  function ev(k,v){ return '<div class="ev"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>'; }
+
+  function toggle(uid, col, currentlyDone){
+    if(!uid){ toast('この項目は更新できません'); return; }
+    var next = !currentlyDone;
+    toast(next?'完了にしました':'未完了に戻しました');
+    api('toggleTask', { uid: uid, taskKey: col, value: next }).then(function(){
+      loadToday();
+    }).catch(function(e){ toast('エラー: '+e.message); });
+  }
+
+  function formatDateJa(s){
+    if(!s) return '';
+    var p=String(s).split('-'); if(p.length!==3) return s;
+    var wd=['日','月','火','水','木','金','土'];
+    var dt=new Date(+p[0],+p[1]-1,+p[2]);
+    return (+p[0])+'年'+(+p[1])+'月'+(+p[2])+'日（'+wd[dt.getDay()]+'）';
+  }
+
+  boot();
+</script>
+</body>
+</html>
