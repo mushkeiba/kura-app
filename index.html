@@ -24,16 +24,23 @@
   .v-bottom-navigation__content > .v-btn{flex:1 1 0 !important;min-width:0 !important;max-width:none !important;}
   .v-bottom-navigation .v-btn__content{font-size:11px;white-space:nowrap;}
   /* カレンダー */
-  .legend{width:14px;height:14px;border-radius:3px;display:inline-block;margin-right:5px;border:1px solid rgba(0,0,0,.12);}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-  .cal-dow{margin-bottom:4px;}
-  .cal-dowcell{text-align:center;font-size:12px;font-weight:700;padding:2px 0;}
-  .cal-cell{min-height:56px;border:1px solid #ECEEF1;border-radius:8px;padding:3px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;}
+  .legend{width:15px;height:15px;border-radius:4px;display:inline-block;margin-right:5px;border:1px solid rgba(0,0,0,.12);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-dow{margin-bottom:5px;}
+  .cal-dowcell{text-align:center;font-size:13px;font-weight:700;padding:2px 0;}
+  .cal-cell{min-height:62px;border:1px solid #ECEEF1;border-radius:8px;padding:4px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;background:#fff;}
   .cal-empty{border:none;background:transparent;cursor:default;}
-  .cal-cell:active{background:#F0FAF3;}
-  .cal-today{border:2px solid #06C755;}
-  .cal-day{font-size:12px;font-weight:600;color:#1F2328;line-height:1.1;}
-  .cal-band{font-size:10px;line-height:1.5;padding:0 4px;margin-top:auto;color:#37474f;font-weight:600;}
+  .cal-cell:active{filter:brightness(.95);}
+  .cal-today{box-shadow:inset 0 0 0 2px #06C755;}
+  .cal-conflict{box-shadow:inset 0 0 0 2px #DC2626 !important;}
+  .cal-day{font-size:14px;font-weight:700;color:#1F2328;line-height:1.1;}
+  .cal-name{font-size:11px;line-height:1.25;font-weight:700;color:#33475b;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-sun{color:#DC2626 !important;}
+  .cal-sat{color:#1565C0 !important;}
+  .cal-air{background:#fde4ec;}
+  .cal-book{background:#e3f0fb;}
+  .cal-priv{background:#e2f5e8;}
+  .cal-stop{background:repeating-linear-gradient(45deg,#eceff1,#eceff1 6px,#dde3e7 6px,#dde3e7 12px);}
 </style>
 </head>
 <body>
@@ -59,7 +66,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v19', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v20', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -78,15 +85,23 @@ var App={
     },
     calLabel:function(){return this.cal.y+'年 '+this.cal.m+'月';},
     calCells:function(){
-      var occ={};
+      // 各夜を覆う予約を集める（泊数ベース：IN〜OUT前日。OUT当日は空き）
+      var cover={};
       this.res.forEach(function(r){
         if(r.cancelled||!r.in||!r.out)return;
         var ip=String(r.in).split('-'),op=String(r.out).split('-');
         if(ip.length!==3||op.length!==3)return;
         var d=new Date(+ip[0],+ip[1]-1,+ip[2]),end=new Date(+op[0],+op[1]-1,+op[2]);
-        // 泊数ベース：IN〜OUT前日を埋める（OUT当日は空き）
         var guard=0;
-        while(d<end&&guard<400){var k=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());occ[k]=r;d.setDate(d.getDate()+1);guard++;}
+        while(d<end&&guard<400){var k=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());(cover[k]=cover[k]||[]).push(r);d.setDate(d.getDate()+1);guard++;}
+      });
+      // 優先：実予約>売り止め。予約が2件以上重なったら本当の重複＝conflict
+      var occ={};
+      Object.keys(cover).forEach(function(k){
+        var arr=cover[k];
+        var bk=arr.filter(function(x){return x.type==='予約';});
+        if(bk.length)occ[k]={r:bk[0],conflict:bk.length>1};
+        else occ[k]={r:arr[0],conflict:false};
       });
       var first=new Date(this.cal.y,this.cal.m-1,1);
       var lead=first.getDay();
@@ -95,7 +110,8 @@ var App={
       for(i=0;i<lead;i++)cells.push(null);
       for(var day=1;day<=dim;day++){
         var k=this.cal.y+'-'+p2(this.cal.m)+'-'+p2(day);
-        cells.push({day:day,date:k,r:occ[k]||null,today:k===todayStr()});
+        var o=occ[k]||null;
+        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr()});
       }
       return cells;
     },
@@ -133,7 +149,9 @@ var App={
       apiCall('toggleTask',{uid:t.uid,taskKey:t.col,value:nv}).then(function(){s.loadToday();}).catch(function(e){t.done=!nv;s.toast('エラー: '+e.message);});},
     channelName:function(c){if(c==='エアビー')return 'Airbnb';if(c==='ブッキング')return 'Booking';if(c==='手動')return '個人';return c||'';},
     calStep:function(n){var m=this.cal.m+n,y=this.cal.y;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.cal={y:y,m:m};},
-    calColor:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return 'grey-lighten-1';if(r.channel==='エアビー')return 'pink-lighten-4';if(r.channel==='ブッキング')return 'blue-lighten-4';return 'green-lighten-4';},
+    mediaClass:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return 'cal-stop';if(r.channel==='エアビー')return 'cal-air';if(r.channel==='ブッキング')return 'cal-book';return 'cal-priv';},
+    dowColor:function(i){var d=i%7;return d===0?'cal-sun':(d===6?'cal-sat':'');},
+    cellName:function(r){if(!r)return '';return (r.type==='売り止め'||r.type==='ブロック')?'売り止め':(r.name||'予約');},
     onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:this.addDays(date,1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     addDays:function(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},
@@ -379,26 +397,27 @@ document.addEventListener('DOMContentLoaded', function(){
               <v-btn icon="mdi-chevron-right" variant="text" @click="calStep(1)"></v-btn>
             </div>
 
-            <div class="d-flex flex-wrap mb-3" style="gap:6px 12px">
-              <span class="d-flex align-center text-caption"><span class="legend" style="background:#f8bbd0"></span>Airbnb</span>
-              <span class="d-flex align-center text-caption"><span class="legend" style="background:#bbdefb"></span>Booking</span>
-              <span class="d-flex align-center text-caption"><span class="legend" style="background:#c8e6c9"></span>個人</span>
-              <span class="d-flex align-center text-caption"><span class="legend" style="background:#cfd8dc"></span>売り止め</span>
+            <div class="d-flex flex-wrap mb-3" style="gap:6px 14px">
+              <span class="d-flex align-center text-caption"><span class="legend cal-air"></span>Airbnb</span>
+              <span class="d-flex align-center text-caption"><span class="legend cal-book"></span>Booking</span>
+              <span class="d-flex align-center text-caption"><span class="legend cal-priv"></span>個人</span>
+              <span class="d-flex align-center text-caption"><span class="legend cal-stop"></span>売り止め</span>
             </div>
 
             <div class="cal-grid cal-dow">
-              <div v-for="(w,i) in ['日','月','火','水','木','金','土']" :key="w" class="cal-dowcell" :class="i===0?'text-error':(i===6?'text-blue':'text-medium-emphasis')">{{ w }}</div>
+              <div v-for="(w,i) in ['日','月','火','水','木','金','土']" :key="w" class="cal-dowcell" :class="i===0?'cal-sun':(i===6?'cal-sat':'text-medium-emphasis')">{{ w }}</div>
             </div>
             <div class="cal-grid">
               <template v-for="(c,i) in calCells" :key="i">
                 <div v-if="!c" class="cal-cell cal-empty"></div>
-                <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
-                  <div class="cal-day">{{ c.day }}</div>
-                  <v-sheet v-if="c.r" :color="calColor(c.r)" rounded class="cal-band text-truncate">{{ chLabel(c.r) }}</v-sheet>
+                <div v-else class="cal-cell" :class="[mediaClass(c.r),{'cal-today':c.today,'cal-conflict':c.conflict}]" @click="onDay(c)">
+                  <div class="cal-day" :class="dowColor(i)">{{ c.day }}</div>
+                  <div v-if="c.start" class="cal-name">{{ cellName(c.r) }}</div>
                 </div>
               </template>
             </div>
-            <div class="text-caption text-medium-emphasis text-center mt-4">空いてる日をタップ → 予約・売り止めを登録</div>
+            <div class="text-caption text-medium-emphasis text-center mt-4 mb-1">白い日（空き）をタップ → 予約・売り止めを登録</div>
+            <div class="text-caption text-error text-center" v-if="calCells.some(function(c){return c&&c.conflict;})">⚠️ 赤枠は予約が重複しています。確認してください</div>
           </v-container>
         </v-window-item>
 
