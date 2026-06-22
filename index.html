@@ -274,7 +274,11 @@ document.addEventListener('DOMContentLoaded', function(){
                     <span class="text-truncate">{{ r.name||'お名前未設定' }}</span>
                     <v-chip size="x-small" :color="chColor(r)" variant="flat" class="flex-shrink-0">{{ chLabel(r) }}</v-chip>
                   </v-list-item-title>
-                  <v-list-item-subtitle>{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }} ・ {{ r.nights }}泊<span v-if="r.adults"> ・ {{ r.adults }}名</span></v-list-item-subtitle>
+                  <v-list-item-subtitle class="mt-1">
+                    <span class="text-body-2 text-high-emphasis">{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }}</span>
+                    <span class="text-medium-emphasis ml-3"><v-icon size="13" class="mr-1">mdi-bed-outline</v-icon>{{ r.nights }}泊</span>
+                    <span v-if="r.adults" class="text-medium-emphasis ml-3"><v-icon size="13" class="mr-1">mdi-account-outline</v-icon>{{ r.adults }}名</span>
+                  </v-list-item-subtitle>
                   <template #append><v-icon color="grey">mdi-chevron-right</v-icon></template>
                 </v-list-item>
                 <v-divider v-if="i<bookings.length-1"></v-divider>
