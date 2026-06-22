@@ -25,22 +25,25 @@
   .v-bottom-navigation .v-btn__content{font-size:11px;white-space:nowrap;}
   /* カレンダー */
   .legend{width:15px;height:15px;border-radius:4px;display:inline-block;margin-right:5px;border:1px solid rgba(0,0,0,.12);}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-  .cal-dow{margin-bottom:5px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0;}
+  .cal-dow{margin-bottom:2px;}
   .cal-dowcell{text-align:center;font-size:13px;font-weight:700;padding:2px 0;}
-  .cal-cell{min-height:62px;border:1px solid #ECEEF1;border-radius:8px;padding:4px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;background:#fff;}
-  .cal-empty{border:none;background:transparent;cursor:default;}
-  .cal-cell:active{filter:brightness(.95);}
+  .cal-week{position:relative;}
+  .cal-weekbg{display:grid;grid-template-columns:repeat(7,1fr);gap:0;}
+  .cal-cell{min-height:66px;border:1px solid #ECEEF1;margin:-0.5px;padding:4px 5px;cursor:pointer;background:#fff;}
+  .cal-empty{border:1px solid transparent;background:transparent;cursor:default;}
+  .cal-cell:active{filter:brightness(.96);}
   .cal-today{box-shadow:inset 0 0 0 2px #06C755;}
-  .cal-conflict{box-shadow:inset 0 0 0 2px #DC2626 !important;}
   .cal-day{font-size:14px;font-weight:700;color:#1F2328;line-height:1.1;}
-  .cal-name{font-size:11px;line-height:1.25;font-weight:700;color:#33475b;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cal-sun{color:#DC2626 !important;}
   .cal-sat{color:#1565C0 !important;}
-  .cal-air{background:#fde4ec;}
-  .cal-book{background:#e3f0fb;}
-  .cal-priv{background:#e2f5e8;}
-  .cal-stop{background:repeating-linear-gradient(45deg,#eceff1,#eceff1 6px,#dde3e7 6px,#dde3e7 12px);}
+  .cal-seg{position:absolute;top:25px;height:22px;border-radius:6px;display:flex;align-items:center;padding:0 7px;overflow:hidden;cursor:pointer;}
+  .cal-segname{font-size:11.5px;font-weight:700;color:#37474f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-conflict{box-shadow:inset 0 0 0 2px #DC2626;}
+  .cal-air{background:#f7c9da;}
+  .cal-book{background:#bfddf7;}
+  .cal-priv{background:#bfe8ca;}
+  .cal-stop{background:repeating-linear-gradient(45deg,#dfe4e7,#dfe4e7 6px,#cbd2d6 6px,#cbd2d6 12px);}
 </style>
 </head>
 <body>
@@ -66,7 +69,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v20', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v21', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -115,6 +118,27 @@ var App={
       }
       return cells;
     },
+    calWeeks:function(){
+      var arr=this.calCells.slice();
+      while(arr.length%7)arr.push(null);
+      var weeks=[];
+      for(var w=0;w<arr.length/7;w++){
+        var days=arr.slice(w*7,w*7+7);
+        var segs=[],j=0;
+        while(j<7){
+          var c=days[j];
+          if(c&&c.r){
+            var uid=c.r.uid,k=j,conflict=!!c.conflict,showName=!!days[j].start;
+            while(k+1<7&&days[k+1]&&days[k+1].r&&days[k+1].r.uid===uid){k++;if(days[k].conflict)conflict=true;if(days[k].start)showName=true;}
+            if(!showName&&j===0)showName=true; // 週またぎの継続は週頭に名前
+            segs.push({col:j+1,span:k-j+1,r:c.r,conflict:conflict,showName:showName});
+            j=k+1;
+          }else j++;
+        }
+        weeks.push({days:days,segs:segs});
+      }
+      return weeks;
+    },
     upcoming:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out>=t;}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     past:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out<t;}).sort(function(a,b){return String(b.in).localeCompare(String(a.in));}).slice(0,20);},
     needsReview:function(){return this.res.filter(function(r){return !r.cancelled&&!String(r.type||'').trim();}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
@@ -151,7 +175,8 @@ var App={
     calStep:function(n){var m=this.cal.m+n,y=this.cal.y;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.cal={y:y,m:m};},
     mediaClass:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return 'cal-stop';if(r.channel==='エアビー')return 'cal-air';if(r.channel==='ブッキング')return 'cal-book';return 'cal-priv';},
     dowColor:function(i){var d=i%7;return d===0?'cal-sun':(d===6?'cal-sat':'');},
-    cellName:function(r){if(!r)return '';return (r.type==='売り止め'||r.type==='ブロック')?'売り止め':(r.name||'予約');},
+    cellName:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return '売り止め';return (r.name&&r.name.trim())?r.name:this.chLabel(r);},
+    segStyle:function(s){var L=(s.col-1)/7*100,W=s.span/7*100;return {left:'calc('+L+'% + 2px)',width:'calc('+W+'% - 4px)'};},
     onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:this.addDays(date,1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     addDays:function(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},
@@ -407,14 +432,18 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="cal-grid cal-dow">
               <div v-for="(w,i) in ['日','月','火','水','木','金','土']" :key="w" class="cal-dowcell" :class="i===0?'cal-sun':(i===6?'cal-sat':'text-medium-emphasis')">{{ w }}</div>
             </div>
-            <div class="cal-grid">
-              <template v-for="(c,i) in calCells" :key="i">
-                <div v-if="!c" class="cal-cell cal-empty"></div>
-                <div v-else class="cal-cell" :class="[mediaClass(c.r),{'cal-today':c.today,'cal-conflict':c.conflict}]" @click="onDay(c)">
-                  <div class="cal-day" :class="dowColor(i)">{{ c.day }}</div>
-                  <div v-if="c.start" class="cal-name">{{ cellName(c.r) }}</div>
-                </div>
-              </template>
+            <div v-for="(wk,wi) in calWeeks" :key="wi" class="cal-week">
+              <div class="cal-weekbg">
+                <template v-for="(c,ci) in wk.days" :key="ci">
+                  <div v-if="!c" class="cal-cell cal-empty"></div>
+                  <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
+                    <div class="cal-day" :class="dowColor(ci)">{{ c.day }}</div>
+                  </div>
+                </template>
+              </div>
+              <div v-for="(s,si) in wk.segs" :key="si" class="cal-seg" :class="[mediaClass(s.r),{'cal-conflict':s.conflict}]" :style="segStyle(s)" @click.stop="openDetail(s.r.uid)">
+                <span v-if="s.showName" class="cal-segname">{{ cellName(s.r) }}</span>
+              </div>
             </div>
             <div class="text-caption text-medium-emphasis text-center mt-4 mb-1">白い日（空き）をタップ → 予約・売り止めを登録</div>
             <div class="text-caption text-error text-center" v-if="calCells.some(function(c){return c&&c.conflict;})">⚠️ 赤枠は予約が重複しています。確認してください</div>
