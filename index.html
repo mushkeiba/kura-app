@@ -48,7 +48,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v17', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v18', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -56,6 +56,13 @@ var App={
     msg:{uid:'',tpl:'',lang:'ja',code:''}
   };},
   computed:{
+    todoList:function(){
+      var t=this.today||{};var out=[];
+      (t.late||[]).forEach(function(x){out.push({uid:x.uid,title:x.task,sub:x.name,overdue:true,classify:false,done:false});});
+      (t.todays||[]).forEach(function(x){out.push({uid:x.uid,title:x.task,sub:x.name,overdue:false,classify:false,done:!!x.done});});
+      (t.needsType||[]).forEach(function(x){out.push({uid:x.uid,title:'種別を選ぶ（予約か売り止め）',sub:(x.name||'(名前未入力)')+'　'+x.in+'→'+x.out,overdue:false,classify:true,done:false});});
+      return out;
+    },
     upcoming:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out>=t;}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     past:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out<t;}).sort(function(a,b){return String(b.in).localeCompare(String(a.in));}).slice(0,20);},
     needsReview:function(){return this.res.filter(function(r){return !r.cancelled&&!String(r.type||'').trim();}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
@@ -192,55 +199,28 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
               </v-alert>
 
-              <template v-if="today.needsType && today.needsType.length">
-                <div class="text-warning text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">⚠️ 種別を入れてください（{{ today.needsType.length }}件）</div>
-                <v-card class="mb-5" color="orange-lighten-5">
-                  <v-list lines="two" density="comfortable" bg-color="transparent">
-                    <template v-for="(n,i) in today.needsType" :key="n.uid">
-                      <v-list-item @click="openDetail(n.uid)">
-                        <template #prepend>
-                          <v-avatar color="warning" size="34"><v-icon color="white">mdi-help</v-icon></v-avatar>
-                        </template>
-                        <v-list-item-title class="text-warning font-weight-bold">{{ n.name }}</v-list-item-title>
-                        <v-list-item-subtitle>{{ n.in }}→{{ n.out }}・タップして予約／売り止めを選ぶ</v-list-item-subtitle>
-                      </v-list-item>
-                      <v-divider v-if="i<today.needsType.length-1"></v-divider>
-                    </template>
-                  </v-list>
-                </v-card>
-              </template>
-
-              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">今日やること</div>
-              <v-card v-if="!today.todays.length"><v-card-text class="text-center text-medium-emphasis py-6">今日やる作業はありません 🎉</v-card-text></v-card>
+              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">今やること</div>
+              <v-card v-if="!todoList.length"><v-card-text class="text-center text-medium-emphasis py-8">今やることはありません 🎉</v-card-text></v-card>
               <v-card v-else>
                 <v-list lines="two" density="comfortable">
-                  <template v-for="(t,i) in today.todays" :key="i">
+                  <template v-for="(t,i) in todoList" :key="i">
                     <v-list-item @click="openDetail(t.uid)">
                       <template #prepend>
-                        <v-avatar :color="t.done?'primary':'grey-lighten-2'" size="34">
-                          <v-icon color="white">{{ t.done?'mdi-check':'mdi-circle-outline' }}</v-icon>
+                        <v-avatar :color="t.classify?'warning':(t.done?'primary':'grey-lighten-2')" size="36">
+                          <v-icon color="white">{{ t.classify?'mdi-help':(t.done?'mdi-check':'mdi-circle-outline') }}</v-icon>
                         </v-avatar>
                       </template>
-                      <v-list-item-title :class="t.done?'text-decoration-line-through text-medium-emphasis':''">{{ t.task }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ t.name }}</v-list-item-subtitle>
+                      <v-list-item-title class="d-flex align-center" style="gap:6px;min-width:0">
+                        <span class="text-truncate" :class="t.done?'text-decoration-line-through text-medium-emphasis':'font-weight-medium'">{{ t.title }}</span>
+                        <v-chip v-if="t.overdue" size="x-small" color="error" variant="flat" class="flex-shrink-0">遅れ</v-chip>
+                      </v-list-item-title>
+                      <v-list-item-subtitle>{{ t.sub }}</v-list-item-subtitle>
+                      <template #append><v-icon color="grey-lighten-1">mdi-chevron-right</v-icon></template>
                     </v-list-item>
-                    <v-divider v-if="i<today.todays.length-1"></v-divider>
+                    <v-divider v-if="i<todoList.length-1"></v-divider>
                   </template>
                 </v-list>
               </v-card>
-
-              <template v-if="today.late && today.late.length">
-                <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1 mt-5">⚠️ まだ終わってない</div>
-                <v-card color="orange-lighten-5">
-                  <v-list density="comfortable" bg-color="transparent">
-                    <v-list-item v-for="(t,i) in today.late" :key="i" @click="toggleToday(t)">
-                      <template #prepend><v-icon color="warning">mdi-alert</v-icon></template>
-                      <v-list-item-title class="text-warning">{{ t.task }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ t.name }}・遅れ</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                </v-card>
-              </template>
 
               <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1 mt-5" style="letter-spacing:.08em">直近のイベント</div>
               <v-card elevation="1">
