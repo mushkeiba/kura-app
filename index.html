@@ -23,6 +23,17 @@
   .v-bottom-navigation__content{justify-content:space-evenly !important;}
   .v-bottom-navigation__content > .v-btn{flex:1 1 0 !important;min-width:0 !important;max-width:none !important;}
   .v-bottom-navigation .v-btn__content{font-size:11px;white-space:nowrap;}
+  /* カレンダー */
+  .legend{width:14px;height:14px;border-radius:3px;display:inline-block;margin-right:5px;border:1px solid rgba(0,0,0,.12);}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-dow{margin-bottom:4px;}
+  .cal-dowcell{text-align:center;font-size:12px;font-weight:700;padding:2px 0;}
+  .cal-cell{min-height:56px;border:1px solid #ECEEF1;border-radius:8px;padding:3px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;}
+  .cal-empty{border:none;background:transparent;cursor:default;}
+  .cal-cell:active{background:#F0FAF3;}
+  .cal-today{border:2px solid #06C755;}
+  .cal-day{font-size:12px;font-weight:600;color:#1F2328;line-height:1.1;}
+  .cal-band{font-size:10px;line-height:1.5;padding:0 4px;margin-top:auto;color:#37474f;font-weight:600;}
 </style>
 </head>
 <body>
@@ -48,11 +59,13 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v18', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v19', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
-    addBusy:false,
+    addOpen:false, addBusy:false,
+    cal:(function(){var d=new Date();return {y:d.getFullYear(),m:d.getMonth()+1};})(),
+    pick:{inOpen:false,outOpen:false,eInOpen:false,eOutOpen:false},
     msg:{uid:'',tpl:'',lang:'ja',code:''}
   };},
   computed:{
@@ -62,6 +75,29 @@ var App={
       (t.todays||[]).forEach(function(x){out.push({uid:x.uid,title:x.task,sub:x.name,overdue:false,classify:false,done:!!x.done});});
       (t.needsType||[]).forEach(function(x){out.push({uid:x.uid,title:'種別を選ぶ（予約か売り止め）',sub:(x.name||'(名前未入力)')+'　'+x.in+'→'+x.out,overdue:false,classify:true,done:false});});
       return out;
+    },
+    calLabel:function(){return this.cal.y+'年 '+this.cal.m+'月';},
+    calCells:function(){
+      var occ={};
+      this.res.forEach(function(r){
+        if(r.cancelled||!r.in||!r.out)return;
+        var ip=String(r.in).split('-'),op=String(r.out).split('-');
+        if(ip.length!==3||op.length!==3)return;
+        var d=new Date(+ip[0],+ip[1]-1,+ip[2]),end=new Date(+op[0],+op[1]-1,+op[2]);
+        // 泊数ベース：IN〜OUT前日を埋める（OUT当日は空き）
+        var guard=0;
+        while(d<end&&guard<400){var k=d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());occ[k]=r;d.setDate(d.getDate()+1);guard++;}
+      });
+      var first=new Date(this.cal.y,this.cal.m-1,1);
+      var lead=first.getDay();
+      var dim=new Date(this.cal.y,this.cal.m,0).getDate();
+      var cells=[],i;
+      for(i=0;i<lead;i++)cells.push(null);
+      for(var day=1;day<=dim;day++){
+        var k=this.cal.y+'-'+p2(this.cal.m)+'-'+p2(day);
+        cells.push({day:day,date:k,r:occ[k]||null,today:k===todayStr()});
+      }
+      return cells;
     },
     upcoming:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out>=t;}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     past:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out<t;}).sort(function(a,b){return String(b.in).localeCompare(String(a.in));}).slice(0,20);},
@@ -80,7 +116,7 @@ var App={
         .replace(/\{暗証番号\}/g,c).replace(/\{door code\}/g,c);
     }
   },
-  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg')this.ensureRes(v); } },
+  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); } },
   methods:{
     fmtMd:fmtMd, fmtJa:fmtJa, fmtJaShort:fmtJaShort,
     toast:function(m){this.snackText=m;this.snack=true;},
@@ -96,6 +132,17 @@ var App={
     toggleToday:function(t){var s=this;if(!t.uid){s.toast('更新できません');return;}var nv=!t.done;t.done=nv;s.toast(nv?'完了にしました':'戻しました');
       apiCall('toggleTask',{uid:t.uid,taskKey:t.col,value:nv}).then(function(){s.loadToday();}).catch(function(e){t.done=!nv;s.toast('エラー: '+e.message);});},
     channelName:function(c){if(c==='エアビー')return 'Airbnb';if(c==='ブッキング')return 'Booking';if(c==='手動')return '個人';return c||'';},
+    calStep:function(n){var m=this.cal.m+n,y=this.cal.y;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.cal={y:y,m:m};},
+    calColor:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return 'grey-lighten-1';if(r.channel==='エアビー')return 'pink-lighten-4';if(r.channel==='ブッキング')return 'blue-lighten-4';return 'green-lighten-4';},
+    onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
+    openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:this.addDays(date,1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
+    addDays:function(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},
+    toDateObj:function(s){if(!s)return null;var p=String(s).split('-');if(p.length!==3)return null;return new Date(+p[0],+p[1]-1,+p[2]);},
+    ymd:function(d){if(!d)return '';if(Array.isArray(d))d=d[0];return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},
+    onPickIn:function(d){var s=this.ymd(d);this.add.in=s;if(!this.add.out||this.add.out<=s)this.add.out=this.addDays(s,1);this.pick.inOpen=false;},
+    onPickOut:function(d){this.add.out=this.ymd(d);this.pick.outOpen=false;},
+    onPickEditIn:function(d){this.edit.in=this.ymd(d);this.pick.eInOpen=false;},
+    onPickEditOut:function(d){this.edit.out=this.ymd(d);this.pick.eOutOpen=false;},
     openDetail:function(uid){var s=this;var r=s.findRes(uid);if(r){s.detail=r;s.detailOpen=true;return;}
       apiCall('list',{}).then(function(d){s.res=d.items||[];var r2=s.findRes(uid);if(r2){s.detail=r2;s.detailOpen=true;}else s.toast('見つかりません');});},
     detailTasks:function(r){var defs=[['予約お礼','予約お礼を送る'],['7日前','7日前メッセ'],['前日','前日メッセ（入り方）'],['宿泊お礼','宿泊お礼'],['清掃済','清掃']];
@@ -111,8 +158,8 @@ var App={
       if(!a.in||!a.out){s.toast('IN/OUTを入力してください');return;}
       if(!stop&&!a.name.trim()){s.toast('お客さん名を入力してください');return;}
       s.addBusy=true;var payload={entry_type:a.type,check_in:a.in,check_out:a.out,guest_name:a.name,num_adults:a.adults,amount:a.amount,phone:a.phone,email:a.email,notes:a.notes,block_reason:a.notes};
-      apiCall('add',{payload:JSON.stringify(payload)}).then(function(res){s.addBusy=false;s.toast('登録しました ✓');s.add.name='';s.add.amount='';s.add.phone='';s.add.email='';s.add.notes='';
-        s.refreshRes(function(){s.tab='list';s.openDetail(res.uid);});}).catch(function(e){s.addBusy=false;s.toast('エラー: '+e.message);});},
+      apiCall('add',{payload:JSON.stringify(payload)}).then(function(res){s.addBusy=false;s.addOpen=false;s.toast('登録しました ✓');
+        s.refreshRes(function(){s.openDetail(res.uid);});}).catch(function(e){s.addBusy=false;s.toast('エラー: '+e.message);});},
     openMsgFor:function(uid){var s=this;s.tab='msg';s.msg.uid=uid;this.$nextTick(function(){s.ensureRes('msg');});this.detailOpen=false;},
     copyMsg:function(){var s=this;var txt=this.msgText;
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){s.toast('コピーしました ✓');},function(){s.fallbackCopy(txt);});}else s.fallbackCopy(txt);},
@@ -131,6 +178,7 @@ var App={
 // テンプレート(#tpl)はこのスクリプトより後ろにあるので、DOM読み込み完了を待ってからmount
 document.addEventListener('DOMContentLoaded', function(){
   var vuetify=Vuetify.createVuetify({
+    locale:{ locale:'ja' },
     theme:{defaultTheme:'kura',themes:{kura:{dark:false,colors:{
       primary:'#06C755', secondary:'#05a948', surface:'#FFFFFF', background:'#F5F7F8',
       error:'#DC2626', warning:'#B7791F'
@@ -322,31 +370,35 @@ document.addEventListener('DOMContentLoaded', function(){
           </v-container>
         </v-window-item>
 
-        <!-- 追加 -->
-        <v-window-item value="add">
+        <!-- カレンダー -->
+        <v-window-item value="calendar">
           <v-container>
-            <v-card class="pa-4">
-              <div class="text-caption text-medium-emphasis mb-1">種別</div>
-              <v-btn-toggle v-model="add.type" mandatory divided color="primary" class="mb-4" style="width:100%">
-                <v-btn value="予約" style="flex:1">お客さんの予約</v-btn>
-                <v-btn value="売り止め" style="flex:1">売り止め</v-btn>
-              </v-btn-toggle>
-              <v-text-field v-if="add.type==='予約'" v-model="add.name" label="お客さん名 *" variant="outlined" density="comfortable"></v-text-field>
-              <v-row dense>
-                <v-col cols="6"><v-text-field v-model="add.in" label="IN (YYYY-MM-DD)" variant="outlined" density="comfortable"></v-text-field></v-col>
-                <v-col cols="6"><v-text-field v-model="add.out" label="OUT" variant="outlined" density="comfortable"></v-text-field></v-col>
-              </v-row>
-              <template v-if="add.type==='予約'">
-                <v-row dense>
-                  <v-col cols="6"><v-text-field v-model="add.adults" label="大人 *" type="number" variant="outlined" density="comfortable"></v-text-field></v-col>
-                  <v-col cols="6"><v-text-field v-model="add.amount" label="金額" type="number" variant="outlined" density="comfortable"></v-text-field></v-col>
-                </v-row>
-                <v-text-field v-model="add.phone" label="電話" variant="outlined" density="comfortable"></v-text-field>
-                <v-text-field v-model="add.email" label="メール" variant="outlined" density="comfortable"></v-text-field>
+            <div class="d-flex align-center justify-space-between mb-3">
+              <v-btn icon="mdi-chevron-left" variant="text" @click="calStep(-1)"></v-btn>
+              <div class="text-h6 font-weight-bold">{{ calLabel }}</div>
+              <v-btn icon="mdi-chevron-right" variant="text" @click="calStep(1)"></v-btn>
+            </div>
+
+            <div class="d-flex flex-wrap mb-3" style="gap:6px 12px">
+              <span class="d-flex align-center text-caption"><span class="legend" style="background:#f8bbd0"></span>Airbnb</span>
+              <span class="d-flex align-center text-caption"><span class="legend" style="background:#bbdefb"></span>Booking</span>
+              <span class="d-flex align-center text-caption"><span class="legend" style="background:#c8e6c9"></span>個人</span>
+              <span class="d-flex align-center text-caption"><span class="legend" style="background:#cfd8dc"></span>売り止め</span>
+            </div>
+
+            <div class="cal-grid cal-dow">
+              <div v-for="(w,i) in ['日','月','火','水','木','金','土']" :key="w" class="cal-dowcell" :class="i===0?'text-error':(i===6?'text-blue':'text-medium-emphasis')">{{ w }}</div>
+            </div>
+            <div class="cal-grid">
+              <template v-for="(c,i) in calCells" :key="i">
+                <div v-if="!c" class="cal-cell cal-empty"></div>
+                <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
+                  <div class="cal-day">{{ c.day }}</div>
+                  <v-sheet v-if="c.r" :color="calColor(c.r)" rounded class="cal-band text-truncate">{{ chLabel(c.r) }}</v-sheet>
+                </div>
               </template>
-              <v-textarea v-model="add.notes" :label="add.type==='売り止め'?'メモ（理由）':'メモ'" variant="outlined" rows="3"></v-textarea>
-              <v-btn color="primary" block size="large" :loading="addBusy" @click="submitAdd">登録する</v-btn>
-            </v-card>
+            </div>
+            <div class="text-caption text-medium-emphasis text-center mt-4">空いてる日をタップ → 予約・売り止めを登録</div>
           </v-container>
         </v-window-item>
 
@@ -437,8 +489,8 @@ document.addEventListener('DOMContentLoaded', function(){
           </v-btn-toggle>
           <v-text-field v-model="edit.name" label="お客さん名" variant="outlined" density="comfortable"></v-text-field>
           <v-row dense>
-            <v-col cols="6"><v-text-field v-model="edit.in" label="IN" variant="outlined" density="comfortable"></v-text-field></v-col>
-            <v-col cols="6"><v-text-field v-model="edit.out" label="OUT" variant="outlined" density="comfortable"></v-text-field></v-col>
+            <v-col cols="6"><v-text-field :model-value="fmtJaShort(edit.in)" label="チェックイン" readonly variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar" @click="pick.eInOpen=true"></v-text-field></v-col>
+            <v-col cols="6"><v-text-field :model-value="fmtJaShort(edit.out)" label="チェックアウト" readonly variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar" @click="pick.eOutOpen=true"></v-text-field></v-col>
           </v-row>
           <v-row dense>
             <v-col cols="6"><v-text-field v-model="edit.adults" label="人数" type="number" variant="outlined" density="comfortable"></v-text-field></v-col>
@@ -454,11 +506,49 @@ document.addEventListener('DOMContentLoaded', function(){
       </v-card>
     </v-dialog>
 
+    <!-- 新規登録ダイアログ（カレンダーの空き日タップから） -->
+    <v-dialog v-model="addOpen" fullscreen transition="dialog-bottom-transition">
+      <v-card rounded="0" border="0">
+        <v-toolbar flat border density="comfortable" style="background:#FFFFFF">
+          <v-btn icon="mdi-chevron-down" variant="text" @click="addOpen=false"></v-btn>
+          <v-toolbar-title style="font-weight:700;color:#1F2328">新規登録</v-toolbar-title>
+        </v-toolbar>
+        <v-card-text style="background:#FAFAFA">
+          <div class="text-caption text-medium-emphasis mb-1">種別</div>
+          <v-btn-toggle v-model="add.type" mandatory divided color="primary" class="mb-4" style="width:100%">
+            <v-btn value="予約" style="flex:1">お客さんの予約</v-btn>
+            <v-btn value="売り止め" style="flex:1">売り止め</v-btn>
+          </v-btn-toggle>
+          <v-text-field v-if="add.type==='予約'" v-model="add.name" label="お客さん名 *" variant="outlined" density="comfortable"></v-text-field>
+          <v-row dense>
+            <v-col cols="6"><v-text-field :model-value="fmtJaShort(add.in)" label="チェックイン" readonly variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar" @click="pick.inOpen=true"></v-text-field></v-col>
+            <v-col cols="6"><v-text-field :model-value="fmtJaShort(add.out)" label="チェックアウト" readonly variant="outlined" density="comfortable" prepend-inner-icon="mdi-calendar" @click="pick.outOpen=true"></v-text-field></v-col>
+          </v-row>
+          <template v-if="add.type==='予約'">
+            <v-row dense>
+              <v-col cols="6"><v-text-field v-model="add.adults" label="大人 *" type="number" variant="outlined" density="comfortable"></v-text-field></v-col>
+              <v-col cols="6"><v-text-field v-model="add.amount" label="金額" type="number" variant="outlined" density="comfortable"></v-text-field></v-col>
+            </v-row>
+            <v-text-field v-model="add.phone" label="電話" variant="outlined" density="comfortable"></v-text-field>
+            <v-text-field v-model="add.email" label="メール" variant="outlined" density="comfortable"></v-text-field>
+          </template>
+          <v-textarea v-model="add.notes" :label="add.type==='売り止め'?'メモ（理由）':'メモ'" variant="outlined" rows="3"></v-textarea>
+          <v-btn color="primary" block size="large" :loading="addBusy" @click="submitAdd">登録する</v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- 日付ピッカー（共通） -->
+    <v-dialog v-model="pick.inOpen" width="auto"><v-date-picker :model-value="toDateObj(add.in)" @update:model-value="onPickIn" color="primary" title="チェックイン" show-adjacent-months></v-date-picker></v-dialog>
+    <v-dialog v-model="pick.outOpen" width="auto"><v-date-picker :model-value="toDateObj(add.out)" @update:model-value="onPickOut" color="primary" title="チェックアウト" show-adjacent-months></v-date-picker></v-dialog>
+    <v-dialog v-model="pick.eInOpen" width="auto"><v-date-picker :model-value="toDateObj(edit.in)" @update:model-value="onPickEditIn" color="primary" title="チェックイン" show-adjacent-months></v-date-picker></v-dialog>
+    <v-dialog v-model="pick.eOutOpen" width="auto"><v-date-picker :model-value="toDateObj(edit.out)" @update:model-value="onPickEditOut" color="primary" title="チェックアウト" show-adjacent-months></v-date-picker></v-dialog>
+
     <!-- ボトムナビ -->
     <v-bottom-navigation v-model="tab" color="primary" grow :elevation="0" bg-color="surface" style="border-top:1px solid #ECEEF1">
       <v-btn value="today"><v-icon>mdi-star-outline</v-icon>今日</v-btn>
       <v-btn value="list"><v-icon>mdi-format-list-bulleted</v-icon>予約</v-btn>
-      <v-btn value="add"><v-icon>mdi-plus-circle-outline</v-icon>追加</v-btn>
+      <v-btn value="calendar"><v-icon>mdi-calendar-month-outline</v-icon>カレンダー</v-btn>
       <v-btn value="msg"><v-icon>mdi-email-outline</v-icon>メッセ</v-btn>
     </v-bottom-navigation>
 
