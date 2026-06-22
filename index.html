@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function(){
       primary:'#06C755', secondary:'#05a948', surface:'#FFFFFF', background:'#F5F7F8',
       error:'#DC2626', warning:'#B7791F'
     }}}},
-    defaults:{ VCard:{rounded:'lg'}, VBtn:{rounded:'lg'} }
+    defaults:{ VCard:{rounded:'lg', elevation:'1'}, VBtn:{rounded:'lg'} }
   });
   Vue.createApp(App).use(vuetify).mount('#app');
 });
@@ -201,13 +201,25 @@ document.addEventListener('DOMContentLoaded', function(){
               </template>
 
               <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1 mt-5">📌 直近のイベント</div>
-              <v-card>
+              <v-card elevation="1">
                 <v-list density="comfortable">
-                  <v-list-item><v-list-item-title>今日チェックイン</v-list-item-title><template #append><span class="font-weight-medium">{{ today.todayIn.length?today.todayIn.join('、'):'なし' }}</span></template></v-list-item>
+                  <v-list-item>
+                    <div class="text-caption text-medium-emphasis">今日チェックイン</div>
+                    <div class="text-body-1 font-weight-bold">{{ today.todayIn.length?today.todayIn.join('、'):'なし' }}</div>
+                  </v-list-item>
                   <v-divider></v-divider>
-                  <v-list-item><v-list-item-title>今日チェックアウト</v-list-item-title><template #append><span class="font-weight-medium">{{ today.todayOut.length?today.todayOut.join('、'):'なし' }}</span></template></v-list-item>
+                  <v-list-item>
+                    <div class="text-caption text-medium-emphasis">今日チェックアウト</div>
+                    <div class="text-body-1 font-weight-bold">{{ today.todayOut.length?today.todayOut.join('、'):'なし' }}</div>
+                  </v-list-item>
                   <v-divider></v-divider>
-                  <v-list-item><v-list-item-title>次のチェックイン</v-list-item-title><template #append><span class="font-weight-medium">{{ today.nextIn?(today.nextIn.name+' '+today.nextIn.date+'（あと'+today.nextIn.d+'日）'):'予定なし' }}</span></template></v-list-item>
+                  <v-list-item>
+                    <div class="text-caption text-medium-emphasis">次のチェックイン</div>
+                    <div class="text-body-1 font-weight-bold" style="white-space:normal">
+                      <span v-if="today.nextIn">{{ today.nextIn.name }}<span class="text-medium-emphasis font-weight-regular text-body-2">　{{ today.nextIn.date }}（あと{{ today.nextIn.d }}日）</span></span>
+                      <span v-else>予定なし</span>
+                    </div>
+                  </v-list-item>
                 </v-list>
               </v-card>
             </div>
