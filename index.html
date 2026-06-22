@@ -246,8 +246,11 @@ document.addEventListener('DOMContentLoaded', function(){
                   <template v-for="(r,i) in needsReview" :key="r.uid">
                     <v-list-item @click="openDetail(r.uid)" style="background:#FFFBF0">
                       <template #prepend><v-icon color="warning">mdi-alert-circle-outline</v-icon></template>
-                      <v-list-item-title class="font-weight-bold">{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }}</v-list-item-title>
-                      <v-list-item-subtitle><v-chip size="x-small" :color="chColor(r)" variant="flat" class="mr-1">{{ chLabel(r) }}</v-chip>種別と名前を入れてください</v-list-item-subtitle>
+                      <v-list-item-title class="font-weight-bold d-flex align-center" style="gap:6px">
+                        <span>{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }}</span>
+                        <v-chip size="x-small" :color="chColor(r)" variant="flat" class="flex-shrink-0">{{ chLabel(r) }}</v-chip>
+                      </v-list-item-title>
+                      <v-list-item-subtitle>種別と名前を入れてください</v-list-item-subtitle>
                       <template #append><v-icon color="grey">mdi-chevron-right</v-icon></template>
                     </v-list-item>
                     <v-divider v-if="i<needsReview.length-1"></v-divider>
@@ -267,11 +270,11 @@ document.addEventListener('DOMContentLoaded', function(){
                       <span class="font-weight-bold">{{ (r.name||'?').slice(0,1) }}</span>
                     </v-avatar>
                   </template>
-                  <v-list-item-title class="font-weight-bold">{{ r.name||'お名前未設定' }}</v-list-item-title>
-                  <v-list-item-subtitle>
-                    <v-chip size="x-small" :color="chColor(r)" variant="flat" class="mr-1">{{ chLabel(r) }}</v-chip>
-                    {{ fmtMd(r.in) }}→{{ fmtMd(r.out) }}・{{ r.nights }}泊<span v-if="r.adults">・{{ r.adults }}名</span>
-                  </v-list-item-subtitle>
+                  <v-list-item-title class="font-weight-bold d-flex align-center" style="gap:6px;min-width:0">
+                    <span class="text-truncate">{{ r.name||'お名前未設定' }}</span>
+                    <v-chip size="x-small" :color="chColor(r)" variant="flat" class="flex-shrink-0">{{ chLabel(r) }}</v-chip>
+                  </v-list-item-title>
+                  <v-list-item-subtitle>{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }} ・ {{ r.nights }}泊<span v-if="r.adults"> ・ {{ r.adults }}名</span></v-list-item-subtitle>
                   <template #append><v-icon color="grey">mdi-chevron-right</v-icon></template>
                 </v-list-item>
                 <v-divider v-if="i<bookings.length-1"></v-divider>
