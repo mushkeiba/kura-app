@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
+<script>
+/* キャッシュ対策：_cb が無ければ一意URLで読み直す＝常に最新を取得（GitHub Pagesでも効く） */
+(function(){try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.set('_cb',String(Date.now()));location.replace(u.toString());}}catch(e){}})();
+</script>
 <title>KURA 予約</title>
 <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.4/dist/vuetify.min.css" rel="stylesheet">
@@ -40,7 +44,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v11', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -159,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <span v-else-if="tab==='list'">予約一覧</span>
         <span v-else-if="tab==='add'">予約を追加</span>
         <span v-else>メッセージ</span>
+        <span class="text-caption text-disabled ml-2" style="font-weight:400">{{ ver }}</span>
       </v-app-bar-title>
       <v-btn v-if="tab==='today'" icon="mdi-refresh" variant="text" color="medium-emphasis" @click="loadToday"></v-btn>
     </v-app-bar>
