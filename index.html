@@ -19,6 +19,9 @@
   .bar{width:5px;border-radius:3px;align-self:stretch;}
   .msgout{white-space:pre-wrap;line-height:1.85;font-size:15px;}
   .ctr{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:14px;text-align:center;padding:24px;}
+  /* ボトムナビを4つ均等幅に */
+  .v-bottom-navigation .v-btn{flex:1 1 0 !important;min-width:0 !important;}
+  .v-bottom-navigation .v-btn__content{font-size:11px;}
 </style>
 </head>
 <body>
@@ -44,7 +47,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v13', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v14', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -193,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function(){
               <v-card v-else>
                 <v-list lines="two" density="comfortable">
                   <template v-for="(t,i) in today.todays" :key="i">
-                    <v-list-item @click="t.needsType ? openDetail(t.uid) : toggleToday(t)">
+                    <v-list-item @click="openDetail(t.uid)">
                       <template #prepend>
                         <v-icon v-if="t.needsType" color="warning" size="34">mdi-alert-circle-outline</v-icon>
                         <v-avatar v-else :color="t.done?'primary':'grey-lighten-2'" size="34">
