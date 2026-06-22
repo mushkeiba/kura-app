@@ -20,7 +20,8 @@
   .msgout{white-space:pre-wrap;line-height:1.85;font-size:15px;}
   .ctr{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:14px;text-align:center;padding:24px;}
   /* ボトムナビを4つ均等幅に */
-  .v-bottom-navigation .v-btn{flex:1 1 0 !important;min-width:0 !important;}
+  .v-bottom-navigation__content{justify-content:space-evenly !important;}
+  .v-bottom-navigation__content > .v-btn{flex:1 1 0 !important;min-width:0 !important;max-width:none !important;}
   .v-bottom-navigation .v-btn__content{font-size:11px;}
 </style>
 </head>
@@ -47,7 +48,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v14', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v15', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
