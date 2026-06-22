@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function(){
       primary:'#06C755', secondary:'#05a948', surface:'#FFFFFF', background:'#F5F7F8',
       error:'#DC2626', warning:'#B7791F'
     }}}},
-    defaults:{ VCard:{rounded:'lg', elevation:'1'}, VBtn:{rounded:'lg'} }
+    defaults:{ VCard:{rounded:'lg', flat:true, border:true}, VBtn:{rounded:'lg'} }
   });
   Vue.createApp(App).use(vuetify).mount('#app');
 });
@@ -149,17 +149,17 @@ document.addEventListener('DOMContentLoaded', function(){
 
   <!-- 本体 -->
   <template v-else>
-    <v-app-bar color="primary" :elevation="2" density="comfortable">
-      <v-app-bar-title style="font-weight:700">
-        <span v-if="tab==='today'">⭐ 今日のやること</span>
-        <span v-else-if="tab==='list'">📋 予約一覧</span>
-        <span v-else-if="tab==='add'">＋ 予約を追加</span>
-        <span v-else>✉️ メッセージ</span>
+    <v-app-bar flat border density="comfortable" style="background:#FFFFFF">
+      <v-app-bar-title style="font-weight:700;color:#1F2328;letter-spacing:.02em">
+        <span v-if="tab==='today'">今日のやること</span>
+        <span v-else-if="tab==='list'">予約一覧</span>
+        <span v-else-if="tab==='add'">予約を追加</span>
+        <span v-else>メッセージ</span>
       </v-app-bar-title>
-      <v-btn v-if="tab==='today'" icon="mdi-refresh" @click="loadToday"></v-btn>
+      <v-btn v-if="tab==='today'" icon="mdi-refresh" variant="text" color="medium-emphasis" @click="loadToday"></v-btn>
     </v-app-bar>
 
-    <v-main style="background:#F5F7F8">
+    <v-main style="background:#FAFAFA">
       <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
       <v-window v-model="tab" :touch="false">
 
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-container>
             <div v-if="today">
               <div style="font-size:20px;font-weight:700;margin:4px 4px 12px">{{ fmtJa(today.date) }}</div>
-              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1">📋 今日やること</div>
+              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">今日やること</div>
               <v-card v-if="!today.todays.length"><v-card-text class="text-center text-medium-emphasis py-6">今日やる作業はありません 🎉</v-card-text></v-card>
               <v-card v-else>
                 <v-list lines="two" density="comfortable">
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 </v-card>
               </template>
 
-              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1 mt-5">📌 直近のイベント</div>
+              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1 mt-5" style="letter-spacing:.08em">直近のイベント</div>
               <v-card elevation="1">
                 <v-list density="comfortable">
                   <v-list-item>
@@ -305,15 +305,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <!-- 詳細ダイアログ（下からせり上がり） -->
     <v-dialog v-model="detailOpen" fullscreen transition="dialog-bottom-transition">
-      <v-card v-if="detail">
-        <v-toolbar color="primary" density="comfortable">
-          <v-btn icon="mdi-chevron-down" @click="detailOpen=false"></v-btn>
-          <v-toolbar-title style="font-weight:700">{{ detail.name||'(名前未入力)' }}</v-toolbar-title>
-          <v-btn variant="text" @click="openEdit">編集</v-btn>
+      <v-card v-if="detail" rounded="0" border="0">
+        <v-toolbar flat border density="comfortable" style="background:#FFFFFF">
+          <v-btn icon="mdi-chevron-down" variant="text" @click="detailOpen=false"></v-btn>
+          <v-toolbar-title style="font-weight:700;color:#1F2328">{{ detail.name||'(名前未入力)' }}</v-toolbar-title>
+          <v-btn variant="text" color="primary" @click="openEdit">編集</v-btn>
         </v-toolbar>
-        <v-card-text>
-          <v-chip :color="chColor(detail)" variant="flat" class="mb-3">{{ chLabel(detail) }}</v-chip>
-          <v-card variant="tonal" class="mb-4">
+        <v-card-text style="background:#FAFAFA">
+          <v-chip :color="chColor(detail)" variant="flat" size="small" class="mb-3">{{ chLabel(detail) }}</v-chip>
+          <v-card class="mb-4">
             <v-list density="comfortable" bg-color="transparent">
               <v-list-item title="日程" :subtitle="fmtMd(detail.in)+' → '+fmtMd(detail.out)+'（'+detail.nights+'泊）'"></v-list-item>
               <template v-if="detail.type!=='売り止め'">
@@ -348,12 +348,12 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <!-- 編集ダイアログ -->
     <v-dialog v-model="editOpen" fullscreen transition="dialog-bottom-transition">
-      <v-card v-if="detail">
-        <v-toolbar color="primary" density="comfortable">
-          <v-btn icon="mdi-chevron-down" @click="editOpen=false"></v-btn>
-          <v-toolbar-title style="font-weight:700">編集</v-toolbar-title>
+      <v-card v-if="detail" rounded="0" border="0">
+        <v-toolbar flat border density="comfortable" style="background:#FFFFFF">
+          <v-btn icon="mdi-chevron-down" variant="text" @click="editOpen=false"></v-btn>
+          <v-toolbar-title style="font-weight:700;color:#1F2328">編集</v-toolbar-title>
         </v-toolbar>
-        <v-card-text>
+        <v-card-text style="background:#FAFAFA">
           <v-text-field v-model="edit.name" label="お客さん名" variant="outlined" density="comfortable"></v-text-field>
           <v-row dense>
             <v-col cols="6"><v-text-field v-model="edit.in" label="IN" variant="outlined" density="comfortable"></v-text-field></v-col>
@@ -374,11 +374,11 @@ document.addEventListener('DOMContentLoaded', function(){
     </v-dialog>
 
     <!-- ボトムナビ -->
-    <v-bottom-navigation v-model="tab" color="primary" grow :elevation="3">
-      <v-btn value="today"><v-icon>mdi-star</v-icon>今日</v-btn>
+    <v-bottom-navigation v-model="tab" color="primary" grow :elevation="0" bg-color="surface" style="border-top:1px solid #ECEEF1">
+      <v-btn value="today"><v-icon>mdi-star-outline</v-icon>今日</v-btn>
       <v-btn value="list"><v-icon>mdi-format-list-bulleted</v-icon>予約</v-btn>
-      <v-btn value="add"><v-icon>mdi-plus-circle</v-icon>追加</v-btn>
-      <v-btn value="msg"><v-icon>mdi-email</v-icon>メッセージ</v-btn>
+      <v-btn value="add"><v-icon>mdi-plus-circle-outline</v-icon>追加</v-btn>
+      <v-btn value="msg"><v-icon>mdi-email-outline</v-icon>メッセージ</v-btn>
     </v-bottom-navigation>
 
     <v-snackbar v-model="snack" timeout="2000" location="bottom">{{ snackText }}</v-snackbar>
