@@ -22,7 +22,7 @@
   /* ボトムナビを4つ均等幅に */
   .v-bottom-navigation__content{justify-content:space-evenly !important;}
   .v-bottom-navigation__content > .v-btn{flex:1 1 0 !important;min-width:0 !important;max-width:none !important;}
-  .v-bottom-navigation .v-btn__content{font-size:11px;}
+  .v-bottom-navigation .v-btn__content{font-size:11px;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -48,7 +48,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v16', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v17', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -192,6 +192,24 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
               </v-alert>
 
+              <template v-if="today.needsType && today.needsType.length">
+                <div class="text-warning text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">⚠️ 種別を入れてください（{{ today.needsType.length }}件）</div>
+                <v-card class="mb-5" color="orange-lighten-5">
+                  <v-list lines="two" density="comfortable" bg-color="transparent">
+                    <template v-for="(n,i) in today.needsType" :key="n.uid">
+                      <v-list-item @click="openDetail(n.uid)">
+                        <template #prepend>
+                          <v-avatar color="warning" size="34"><v-icon color="white">mdi-help</v-icon></v-avatar>
+                        </template>
+                        <v-list-item-title class="text-warning font-weight-bold">{{ n.name }}</v-list-item-title>
+                        <v-list-item-subtitle>{{ n.in }}→{{ n.out }}・タップして予約／売り止めを選ぶ</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-divider v-if="i<today.needsType.length-1"></v-divider>
+                    </template>
+                  </v-list>
+                </v-card>
+              </template>
+
               <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">今日やること</div>
               <v-card v-if="!today.todays.length"><v-card-text class="text-center text-medium-emphasis py-6">今日やる作業はありません 🎉</v-card-text></v-card>
               <v-card v-else>
@@ -199,12 +217,11 @@ document.addEventListener('DOMContentLoaded', function(){
                   <template v-for="(t,i) in today.todays" :key="i">
                     <v-list-item @click="openDetail(t.uid)">
                       <template #prepend>
-                        <v-icon v-if="t.needsType" color="warning" size="34">mdi-alert-circle-outline</v-icon>
-                        <v-avatar v-else :color="t.done?'primary':'grey-lighten-2'" size="34">
+                        <v-avatar :color="t.done?'primary':'grey-lighten-2'" size="34">
                           <v-icon color="white">{{ t.done?'mdi-check':'mdi-circle-outline' }}</v-icon>
                         </v-avatar>
                       </template>
-                      <v-list-item-title :class="t.needsType?'text-warning font-weight-bold':(t.done?'text-decoration-line-through text-medium-emphasis':'')">{{ t.task }}</v-list-item-title>
+                      <v-list-item-title :class="t.done?'text-decoration-line-through text-medium-emphasis':''">{{ t.task }}</v-list-item-title>
                       <v-list-item-subtitle>{{ t.name }}</v-list-item-subtitle>
                     </v-list-item>
                     <v-divider v-if="i<today.todays.length-1"></v-divider>
@@ -462,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <v-btn value="today"><v-icon>mdi-star-outline</v-icon>今日</v-btn>
       <v-btn value="list"><v-icon>mdi-format-list-bulleted</v-icon>予約</v-btn>
       <v-btn value="add"><v-icon>mdi-plus-circle-outline</v-icon>追加</v-btn>
-      <v-btn value="msg"><v-icon>mdi-email-outline</v-icon>メッセージ</v-btn>
+      <v-btn value="msg"><v-icon>mdi-email-outline</v-icon>メッセ</v-btn>
     </v-bottom-navigation>
 
     <v-snackbar v-model="snack" timeout="2000" location="bottom">{{ snackText }}</v-snackbar>
