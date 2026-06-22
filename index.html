@@ -44,7 +44,7 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v11', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v12', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{},
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -84,7 +84,9 @@ var App={
     refreshRes:function(cb){var s=this;apiCall('list',{}).then(function(d){s.res=d.items||[];if(cb)cb();});},
     toggleToday:function(t){var s=this;if(!t.uid){s.toast('更新できません');return;}var nv=!t.done;t.done=nv;s.toast(nv?'完了にしました':'戻しました');
       apiCall('toggleTask',{uid:t.uid,taskKey:t.col,value:nv}).then(function(){s.loadToday();}).catch(function(e){t.done=!nv;s.toast('エラー: '+e.message);});},
-    openDetail:function(uid){var r=this.findRes(uid);if(!r){this.toast('見つかりません');return;}this.detail=r;this.detailOpen=true;},
+    channelName:function(c){if(c==='エアビー')return 'Airbnb';if(c==='ブッキング')return 'Booking';if(c==='手動')return '個人';return c||'';},
+    openDetail:function(uid){var s=this;var r=s.findRes(uid);if(r){s.detail=r;s.detailOpen=true;return;}
+      apiCall('list',{}).then(function(d){s.res=d.items||[];var r2=s.findRes(uid);if(r2){s.detail=r2;s.detailOpen=true;}else s.toast('見つかりません');});},
     detailTasks:function(r){var defs=[['予約お礼','予約お礼を送る'],['7日前','7日前メッセ'],['前日','前日メッセ（入り方）'],['宿泊お礼','宿泊お礼'],['清掃済','清掃']];
       return defs.map(function(d){return {col:d[0],label:d[1],done:!!(r.tasks&&r.tasks[d[0]])};});},
     toggleDetail:function(r,col){var s=this;var done=!!(r.tasks&&r.tasks[col]);if(r.tasks)r.tasks[col]=!done;
@@ -177,6 +179,15 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-container>
             <div v-if="today">
               <div style="font-size:20px;font-weight:700;margin:4px 4px 12px">{{ fmtJa(today.date) }}</div>
+
+              <!-- 新規予約（24時間以内） -->
+              <v-alert v-if="today.newRes && today.newRes.length" color="primary" variant="tonal" density="comfortable" class="mb-4" rounded="lg" icon="mdi-bell-ring-outline">
+                <div class="font-weight-bold mb-1">新規予約がありました（{{ today.newRes.length }}件）</div>
+                <div v-for="n in today.newRes" :key="n.uid" class="text-body-2 py-1" style="cursor:pointer" @click="openDetail(n.uid)">
+                  ・{{ n.name }}　{{ n.in }}→{{ n.out }}（{{ channelName(n.channel) }}）
+                </div>
+              </v-alert>
+
               <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">今日やること</div>
               <v-card v-if="!today.todays.length"><v-card-text class="text-center text-medium-emphasis py-6">今日やる作業はありません 🎉</v-card-text></v-card>
               <v-card v-else>
@@ -278,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function(){
                   <v-list-item-title class="font-weight-bold d-flex align-center" style="gap:6px;min-width:0">
                     <span class="text-truncate">{{ r.name||'お名前未設定' }}</span>
                     <v-chip size="x-small" :color="chColor(r)" variant="flat" class="flex-shrink-0">{{ chLabel(r) }}</v-chip>
+                    <v-chip v-if="r.isNew" size="x-small" color="error" variant="flat" class="flex-shrink-0">NEW</v-chip>
                   </v-list-item-title>
                   <v-list-item-subtitle class="mt-1">
                     <span class="text-body-2 text-high-emphasis">{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }}</span>
