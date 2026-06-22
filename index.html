@@ -50,7 +50,10 @@ var App={
   computed:{
     upcoming:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out>=t;}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     past:function(){var t=todayStr();return this.res.filter(function(r){return !r.cancelled&&r.out<t;}).sort(function(a,b){return String(b.in).localeCompare(String(a.in));}).slice(0,20);},
-    msgGuests:function(){return this.res.filter(function(r){return !r.cancelled&&r.type!=='売り止め';}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
+    needsReview:function(){return this.res.filter(function(r){return !r.cancelled&&!String(r.type||'').trim();}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
+    bookings:function(){return this.res.filter(function(r){return !r.cancelled&&r.type==='予約';}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
+    blocks:function(){return this.res.filter(function(r){return !r.cancelled&&(r.type==='売り止め'||r.type==='ブロック');}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
+    msgGuests:function(){return this.res.filter(function(r){return !r.cancelled&&r.type!=='売り止め'&&r.type!=='ブロック';}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     msgText:function(){
       if(!this.msg.uid||!this.msg.tpl)return 'お客さんと文例を選んでください';
       var r=this.findRes(this.msg.uid),t=this.tpl.filter(function(x){return x.name===this.msg.tpl;}.bind(this))[0];
@@ -82,8 +85,9 @@ var App={
       return defs.map(function(d){return {col:d[0],label:d[1],done:!!(r.tasks&&r.tasks[d[0]])};});},
     toggleDetail:function(r,col){var s=this;var done=!!(r.tasks&&r.tasks[col]);if(r.tasks)r.tasks[col]=!done;
       apiCall('toggleTask',{uid:r.uid,taskKey:col,value:!done}).then(function(){}).catch(function(e){if(r.tasks)r.tasks[col]=done;s.toast('エラー: '+e.message);});},
-    openEdit:function(){var r=this.detail;this.edit={uid:r.uid,name:r.name||'',in:r.in||'',out:r.out||'',adults:r.adults||'',amount:r.amount||'',phone:r.phone||'',email:r.email||'',lastContact:r.lastContact||'',notes:r.notes||''};this.editOpen=true;},
-    saveEdit:function(){var s=this;var e=s.edit;var patch={'お客さん名':e.name,'IN':e.in,'OUT':e.out,'人数':e.adults,'金額':e.amount,'電話':e.phone,'メール':e.email,'最終やりとり日':e.lastContact,'メモ':e.notes};
+    setType:function(uid,type){var s=this;s.toast(type+'にしました');apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'種別':type}})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(uid);});}).catch(function(e){s.toast('エラー: '+e.message);});},
+    openEdit:function(){var r=this.detail;this.edit={uid:r.uid,type:r.type||'予約',name:r.name||'',in:r.in||'',out:r.out||'',adults:r.adults||'',amount:r.amount||'',phone:r.phone||'',email:r.email||'',lastContact:r.lastContact||'',notes:r.notes||''};this.editOpen=true;},
+    saveEdit:function(){var s=this;var e=s.edit;var patch={'種別':e.type,'お客さん名':e.name,'IN':e.in,'OUT':e.out,'人数':e.adults,'金額':e.amount,'電話':e.phone,'メール':e.email,'最終やりとり日':e.lastContact,'メモ':e.notes};
       s.toast('保存中…');apiCall('update',{payload:JSON.stringify({uid:e.uid,patch:patch})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(e.uid);s.editOpen=false;s.toast('保存しました');});}).catch(function(err){s.toast('エラー: '+err.message);});},
     cancelRes:function(){var s=this;var uid=s.detail.uid;apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.toast('キャンセルにしました');s.editOpen=false;s.detailOpen=false;s.refreshRes();}).catch(function(e){s.toast('エラー: '+e.message);});},
     submitAdd:function(){var s=this;var a=s.add;var stop=(a.type==='売り止め');
@@ -229,29 +233,64 @@ document.addEventListener('DOMContentLoaded', function(){
         <!-- 予約一覧 -->
         <v-window-item value="list">
           <v-container>
-            <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1">これから・滞在中</div>
-            <v-card v-if="!upcoming.length"><v-card-text class="text-center text-medium-emphasis py-6">予約なし</v-card-text></v-card>
-            <v-card v-else><v-list>
-              <template v-for="(r,i) in upcoming" :key="r.uid">
+            <!-- 要確認アラート -->
+            <v-alert v-if="needsReview.length" type="warning" variant="tonal" density="comfortable" class="mb-4" rounded="lg">
+              <span class="font-weight-bold">{{ needsReview.length }}件</span>、種別が未設定です。タップして「予約」か「売り止め」を選んでください。
+            </v-alert>
+
+            <!-- 要確認 -->
+            <template v-if="needsReview.length">
+              <div class="text-warning text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">要確認</div>
+              <v-card class="mb-5" style="border-color:#E8C97A">
+                <v-list>
+                  <template v-for="(r,i) in needsReview" :key="r.uid">
+                    <v-list-item @click="openDetail(r.uid)" style="background:#FFFBF0">
+                      <template #prepend><v-icon color="warning">mdi-alert-circle-outline</v-icon></template>
+                      <v-list-item-title class="font-weight-bold">{{ fmtMd(r.in) }} → {{ fmtMd(r.out) }}</v-list-item-title>
+                      <v-list-item-subtitle><v-chip size="x-small" :color="chColor(r)" variant="flat" class="mr-1">{{ chLabel(r) }}</v-chip>種別と名前を入れてください</v-list-item-subtitle>
+                      <template #append><v-icon color="grey">mdi-chevron-right</v-icon></template>
+                    </v-list-item>
+                    <v-divider v-if="i<needsReview.length-1"></v-divider>
+                  </template>
+                </v-list>
+              </v-card>
+            </template>
+
+            <!-- 予約 -->
+            <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">予約</div>
+            <v-card v-if="!bookings.length" class="mb-5"><v-card-text class="text-center text-medium-emphasis py-6">予約はありません</v-card-text></v-card>
+            <v-card v-else class="mb-5"><v-list lines="two">
+              <template v-for="(r,i) in bookings" :key="r.uid">
                 <v-list-item @click="openDetail(r.uid)">
-                  <v-list-item-title class="font-weight-bold">{{ r.name||(r.type==='売り止め'?'売り止め':'(名前未入力)') }}</v-list-item-title>
+                  <template #prepend>
+                    <v-avatar size="40" :color="chColor(r)" variant="tonal">
+                      <span class="font-weight-bold">{{ (r.name||'?').slice(0,1) }}</span>
+                    </v-avatar>
+                  </template>
+                  <v-list-item-title class="font-weight-bold">{{ r.name||'お名前未設定' }}</v-list-item-title>
                   <v-list-item-subtitle>
                     <v-chip size="x-small" :color="chColor(r)" variant="flat" class="mr-1">{{ chLabel(r) }}</v-chip>
                     {{ fmtMd(r.in) }}→{{ fmtMd(r.out) }}・{{ r.nights }}泊<span v-if="r.adults">・{{ r.adults }}名</span>
                   </v-list-item-subtitle>
                   <template #append><v-icon color="grey">mdi-chevron-right</v-icon></template>
                 </v-list-item>
-                <v-divider v-if="i<upcoming.length-1"></v-divider>
+                <v-divider v-if="i<bookings.length-1"></v-divider>
               </template>
             </v-list></v-card>
 
-            <template v-if="past.length">
-              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1 mt-5">過去</div>
-              <v-card><v-list>
-                <v-list-item v-for="r in past" :key="r.uid" @click="openDetail(r.uid)">
-                  <v-list-item-title>{{ r.name||'(名前未入力)' }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ fmtMd(r.in) }}→{{ fmtMd(r.out) }}</v-list-item-subtitle>
-                </v-list-item>
+            <!-- 売り止め -->
+            <template v-if="blocks.length">
+              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">売り止め</div>
+              <v-card><v-list bg-color="grey-lighten-4">
+                <template v-for="(r,i) in blocks" :key="r.uid">
+                  <v-list-item @click="openDetail(r.uid)">
+                    <template #prepend><v-icon color="grey">mdi-cancel</v-icon></template>
+                    <v-list-item-title class="text-medium-emphasis font-weight-medium">売り止め</v-list-item-title>
+                    <v-list-item-subtitle>{{ fmtMd(r.in) }}→{{ fmtMd(r.out) }}<span v-if="r.notes">・{{ r.notes }}</span></v-list-item-subtitle>
+                    <template #append><v-icon color="grey">mdi-chevron-right</v-icon></template>
+                  </v-list-item>
+                  <v-divider v-if="i<blocks.length-1"></v-divider>
+                </template>
               </v-list></v-card>
             </template>
           </v-container>
@@ -312,6 +351,13 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-btn variant="text" color="primary" @click="openEdit">編集</v-btn>
         </v-toolbar>
         <v-card-text style="background:#FAFAFA">
+          <v-alert v-if="!String(detail.type||'').trim()" type="warning" variant="tonal" density="comfortable" class="mb-3" rounded="lg">
+            <div class="mb-2 font-weight-bold">種別が未設定です</div>
+            <div class="d-flex" style="gap:8px">
+              <v-btn color="primary" variant="flat" size="small" @click="setType(detail.uid,'予約')">予約にする</v-btn>
+              <v-btn variant="outlined" size="small" @click="setType(detail.uid,'売り止め')">売り止めにする</v-btn>
+            </div>
+          </v-alert>
           <v-chip :color="chColor(detail)" variant="flat" size="small" class="mb-3">{{ chLabel(detail) }}</v-chip>
           <v-card class="mb-4">
             <v-list density="comfortable" bg-color="transparent">
@@ -354,6 +400,11 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-toolbar-title style="font-weight:700;color:#1F2328">編集</v-toolbar-title>
         </v-toolbar>
         <v-card-text style="background:#FAFAFA">
+          <div class="text-caption text-medium-emphasis mb-1">種別</div>
+          <v-btn-toggle v-model="edit.type" mandatory divided color="primary" class="mb-4" style="width:100%">
+            <v-btn value="予約" style="flex:1">予約</v-btn>
+            <v-btn value="売り止め" style="flex:1">売り止め</v-btn>
+          </v-btn-toggle>
           <v-text-field v-model="edit.name" label="お客さん名" variant="outlined" density="comfortable"></v-text-field>
           <v-row dense>
             <v-col cols="6"><v-text-field v-model="edit.in" label="IN" variant="outlined" density="comfortable"></v-text-field></v-col>
