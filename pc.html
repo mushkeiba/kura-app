@@ -34,7 +34,7 @@
 
   /* ── 地・カード ── */
   .v-main{background:var(--paper);}
-  .sheet{max-width:1160px;margin:0 auto;padding:26px 30px 60px;}
+  .sheet{max-width:1240px;margin:0 auto;padding:26px 30px 60px;}
   .pagehead{display:flex;align-items:baseline;gap:14px;margin:2px 2px 20px;}
   .pagehead h1{font-size:21px;letter-spacing:.06em;color:var(--ink);margin:0;font-weight:600;}
   .pagehead .date{color:#8A8577;font-size:13.5px;}
@@ -73,7 +73,10 @@
   .cal-dowcell{text-align:center;font-size:12px;font-weight:700;letter-spacing:.08em;padding:8px 0 6px;color:#8A8577;}
   .cal-week{position:relative;}
   .cal-weekbg{display:grid;grid-template-columns:repeat(7,1fr);}
-  .cal-cell{min-height:104px;border:1px solid #EBE5D8;margin:-0.5px;padding:7px 9px;cursor:pointer;background:#FFFDF9;transition:background .12s;}
+  .cal-duo{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
+  @media(max-width:1180px){.cal-duo{grid-template-columns:1fr;}}
+  .cal-month .mtitle{font-size:17px;letter-spacing:.1em;color:var(--ink);text-align:center;padding:4px 0 8px;}
+  .cal-cell{min-height:92px;border:1px solid #EBE5D8;margin:-0.5px;padding:6px 8px;cursor:pointer;background:#FFFDF9;transition:background .12s;}
   .cal-cell:hover{background:#F6F1E7;}
   .cal-empty{border-color:transparent;background:transparent;cursor:default;}
   .cal-empty:hover{background:transparent;}
@@ -81,9 +84,9 @@
   .cal-day{font-size:13.5px;font-weight:700;color:var(--ink);}
   .cal-sun{color:#B3402F !important;}
   .cal-sat{color:#31597E !important;}
-  .cal-seg{position:absolute;top:32px;height:28px;border-radius:7px;display:flex;align-items:center;padding:0 9px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(42,42,38,.08);}
-  .cal-seg:hover{filter:brightness(.96);}
-  .cal-segname{font-size:12.5px;font-weight:700;color:#3B3A33;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-seg{position:absolute;top:30px;height:26px;border-radius:7px;display:flex;align-items:center;padding:0 8px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(42,42,38,.08);transition:transform .14s ease,box-shadow .14s ease;}
+  .cal-seg:hover{transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(42,42,38,.3);}
+  .cal-segname{font-size:12px;font-weight:700;color:#3B3A33;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cal-conflict{box-shadow:inset 0 0 0 2px #B3402F;}
   .cal-air{background:#F7C9DA;}
   .cal-book{background:#BFDDF7;}
@@ -105,6 +108,31 @@
   /* Vuetify 微調整 */
   .v-field{background:#FFFDF9 !important;}
   .todo-done{text-decoration:line-through;color:#A29B8A;}
+
+  /* ── アニメーション（純CSS・帳場らしく控えめに上質） ── */
+  @keyframes rise{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+  @keyframes segpop{from{opacity:0;transform:scaleX(.55);}to{opacity:1;transform:none;}}
+  @keyframes ruleGrow{from{width:0;}to{width:30px;}}
+  .pagehead{animation:rise .35s cubic-bezier(.22,.8,.3,1) both;}
+  .fadewrap>.card,.fadewrap>.grid2>.card,.fadewrap>.v-alert{animation:rise .5s cubic-bezier(.22,.8,.3,1) both;}
+  .fadewrap>.card:nth-of-type(2),.fadewrap>.grid2>.card:nth-of-type(2){animation-delay:.08s;}
+  .fadewrap>.card:nth-of-type(3){animation-delay:.16s;}
+  .cal-seg{animation:segpop .3s cubic-bezier(.22,.8,.3,1) both;transform-origin:left center;}
+  .ledger tbody tr{animation:rise .4s cubic-bezier(.22,.8,.3,1) both;}
+  .ledger tbody tr:nth-child(2){animation-delay:.03s;}
+  .ledger tbody tr:nth-child(3){animation-delay:.06s;}
+  .ledger tbody tr:nth-child(4){animation-delay:.09s;}
+  .ledger tbody tr:nth-child(5){animation-delay:.12s;}
+  .ledger tbody tr:nth-child(6){animation-delay:.15s;}
+  .ledger tbody tr:nth-child(7){animation-delay:.18s;}
+  .ledger tbody tr:nth-child(n+8){animation-delay:.2s;}
+  .gatecard{animation:rise .6s cubic-bezier(.22,.8,.3,1) both;}
+  .gatecard .rule{animation:ruleGrow .6s .35s cubic-bezier(.22,.8,.3,1) both;}
+  .navi .v-list-item{transition:transform .16s ease;}
+  .navi .v-list-item:hover{transform:translateX(3px);}
+  .card{transition:box-shadow .25s ease;}
+  .card:hover{box-shadow:0 10px 30px -24px rgba(42,42,38,.45);}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0ms !important;transition-duration:.01ms !important;}}
 </style>
 </head>
 <body>
@@ -129,7 +157,7 @@ function addDays(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p
 var App={
   data:function(){return{
     ready:false, needPw:true, pwInput:'', pwErr:'', busyPw:false,
-    ver:'pc-v1', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'pc-v2', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     q:'', showPast:false,
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
@@ -148,8 +176,7 @@ var App={
       (t.needsType||[]).forEach(function(x){out.push({uid:x.uid,col:'',title:'種別を選ぶ（予約か売り止め）',sub:(x.name||'(名前未入力)')+'　'+x.in+'→'+x.out,overdue:false,classify:true,done:false});});
       return out;
     },
-    calLabel:function(){return this.cal.y+'年 '+this.cal.m+'月';},
-    calCells:function(){
+    occMap:function(){
       var cover={};
       this.res.forEach(function(r){
         if(r.cancelled||!r.in||!r.out)return;
@@ -166,40 +193,20 @@ var App={
         if(bk.length)occ[k]={r:bk[0],conflict:bk.length>1};
         else occ[k]={r:arr[0],conflict:false};
       });
-      var first=new Date(this.cal.y,this.cal.m-1,1);
-      var lead=first.getDay();
-      var dim=new Date(this.cal.y,this.cal.m,0).getDate();
-      var cells=[],i;
-      for(i=0;i<lead;i++)cells.push(null);
-      for(var day=1;day<=dim;day++){
-        var k=this.cal.y+'-'+p2(this.cal.m)+'-'+p2(day);
-        var o=occ[k]||null;
-        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr()});
-      }
-      return cells;
+      return occ;
     },
-    calWeeks:function(){
-      var arr=this.calCells.slice();
-      while(arr.length%7)arr.push(null);
-      var weeks=[];
-      for(var w=0;w<arr.length/7;w++){
-        var days=arr.slice(w*7,w*7+7);
-        var segs=[],j=0;
-        while(j<7){
-          var c=days[j];
-          if(c&&c.r){
-            var uid=c.r.uid,k=j,conflict=!!c.conflict,showName=!!days[j].start;
-            while(k+1<7&&days[k+1]&&days[k+1].r&&days[k+1].r.uid===uid){k++;if(days[k].conflict)conflict=true;if(days[k].start)showName=true;}
-            if(!showName&&j===0)showName=true;
-            segs.push({col:j+1,span:k-j+1,r:c.r,conflict:conflict,showName:showName});
-            j=k+1;
-          }else j++;
-        }
-        weeks.push({days:days,segs:segs});
+    monthBlocks:function(){  // 当月＋翌月を横並び表示
+      var out=[];
+      for(var off=0;off<2;off++){
+        var y=this.cal.y,m=this.cal.m+off;
+        if(m>12){m-=12;y++;}
+        out.push({y:y,m:m,label:y+'年 '+m+'月',weeks:this.buildWeeks(y,m)});
       }
-      return weeks;
+      return out;
     },
-    hasConflict:function(){return this.calCells.some(function(c){return c&&c.conflict;});},
+    hasConflict:function(){
+      return this.monthBlocks.some(function(b){return b.weeks.some(function(w){return w.days.some(function(c){return c&&c.conflict;});});});
+    },
     needsReview:function(){return this.res.filter(function(r){return !r.cancelled&&!String(r.type||'').trim();}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     bookingsAll:function(){return this.res.filter(function(r){return !r.cancelled&&r.type==='予約';}).sort(function(a,b){return String(a.in).localeCompare(String(b.in));});},
     bookings:function(){
@@ -238,7 +245,12 @@ var App={
 
     boot:function(){var s=this;
       var saved=(window.localStorage&&localStorage.getItem('kura_pw'))||'';
-      if(saved){AUTH_PW=saved;s.needPw=false;s.reload(true);}else{s.ready=true;}
+      var cache=null;try{cache=JSON.parse((window.localStorage&&localStorage.getItem('kura_cache'))||'null');}catch(e){}
+      if(saved){AUTH_PW=saved;s.needPw=false;
+        // 前回データを即表示（stale-while-revalidate）→ 裏で最新に差し替え。「帳場を開いています…」をほぼ廃止
+        if(cache&&cache.res){s.today=cache.today||null;s.res=cache.res||[];s.tpl=cache.tpl||[];s.ready=true;}
+        s.reload(!s.ready);
+      }else{s.ready=true;}
       window.addEventListener('focus',function(){
         if(s.needPw||!AUTH_PW)return;
         var now=Date.now();
@@ -254,11 +266,12 @@ var App={
     reload:function(first){var s=this;s.loading=true;
       apiCall('bootstrap',{}).then(function(d){s.loading=false;s.ready=true;s.applyBoot(d);})
       .catch(function(e){s.loading=false;s.ready=true;
-        if(String(e.message).indexOf('INVALID_TOKEN')!==-1){AUTH_PW='';if(window.localStorage)localStorage.removeItem('kura_pw');s.needPw=true;}
+        if(String(e.message).indexOf('INVALID_TOKEN')!==-1){AUTH_PW='';if(window.localStorage){localStorage.removeItem('kura_pw');localStorage.removeItem('kura_cache');}s.needPw=true;}
         else if(first){s.toast('読み込みエラー: '+e.message);}
       });},
-    applyBoot:function(d){this.today=d.today||null;this.res=(d.list&&d.list.items)||[];this.tpl=(d.templates&&d.templates.items)||[];},
-    logout:function(){AUTH_PW='';this.pwInput='';if(window.localStorage)localStorage.removeItem('kura_pw');this.needPw=true;},
+    applyBoot:function(d){this.today=d.today||null;this.res=(d.list&&d.list.items)||[];this.tpl=(d.templates&&d.templates.items)||[];
+      try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:this.today,res:this.res,tpl:this.tpl}));}catch(e){}},
+    logout:function(){AUTH_PW='';this.pwInput='';if(window.localStorage){localStorage.removeItem('kura_pw');localStorage.removeItem('kura_cache');}this.needPw=true;},
 
     refreshRes:function(cb){var s=this;apiCall('list',{}).then(function(d){s.res=d.items||[];if(cb)cb();});},
     loadToday:function(){var s=this;apiCall('today',{}).then(function(d){s.today=d;});},
@@ -268,6 +281,35 @@ var App={
       apiCall('toggleTask',{uid:t.uid,taskKey:t.col,value:nv}).then(function(){s.loadToday();}).catch(function(e){t.done=!nv;s.toast('エラー: '+e.message);});},
     calStep:function(n){var m=this.cal.m+n,y=this.cal.y;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.cal={y:y,m:m};},
     calToday:function(){var d=new Date();this.cal={y:d.getFullYear(),m:d.getMonth()+1};},
+    buildWeeks:function(y,m){
+      var occ=this.occMap;
+      var lead=new Date(y,m-1,1).getDay();
+      var dim=new Date(y,m,0).getDate();
+      var cells=[],i;
+      for(i=0;i<lead;i++)cells.push(null);
+      for(var day=1;day<=dim;day++){
+        var k=y+'-'+p2(m)+'-'+p2(day);
+        var o=occ[k]||null;
+        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr()});
+      }
+      while(cells.length%7)cells.push(null);
+      var weeks=[];
+      for(var w=0;w<cells.length/7;w++){
+        var days=cells.slice(w*7,w*7+7),segs=[],j=0;
+        while(j<7){
+          var c=days[j];
+          if(c&&c.r){
+            var uid=c.r.uid,k2=j,conflict=!!c.conflict,showName=!!days[j].start;
+            while(k2+1<7&&days[k2+1]&&days[k2+1].r&&days[k2+1].r.uid===uid){k2++;if(days[k2].conflict)conflict=true;if(days[k2].start)showName=true;}
+            if(!showName&&j===0)showName=true;
+            segs.push({col:j+1,span:k2-j+1,r:c.r,conflict:conflict,showName:showName});
+            j=k2+1;
+          }else j++;
+        }
+        weeks.push({days:days,segs:segs});
+      }
+      return weeks;
+    },
     onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:addDays(date,1),adults:'2',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     openDetail:function(uid){var s=this;var r=s.findRes(uid);if(r){s.detail=r;s.detailOpen=true;return;}
@@ -276,20 +318,33 @@ var App={
       return defs.map(function(d){return {col:d[0],label:d[1],done:!!(r.tasks&&r.tasks[d[0]])};});},
     toggleDetail:function(r,col){var s=this;var done=!!(r.tasks&&r.tasks[col]);if(r.tasks)r.tasks[col]=!done;
       apiCall('toggleTask',{uid:r.uid,taskKey:col,value:!done}).then(function(){s.loadToday();}).catch(function(e){if(r.tasks)r.tasks[col]=done;s.toast('エラー: '+e.message);});},
-    setType:function(uid,type){var s=this;s.toast(type+'にしました');apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'種別':type}})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(uid);s.loadToday();});}).catch(function(e){s.toast('エラー: '+e.message);});},
+    setType:function(uid,type){var s=this;var r=s.findRes(uid);var prev=r?r.type:'';
+      if(r)r.type=type;s.toast(type+'にしました ✓');
+      apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'種別':type}})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(uid);s.loadToday();});}).catch(function(e){if(r)r.type=prev;s.toast('保存に失敗: '+e.message);});},
     openEdit:function(){var r=this.detail;this.edit={uid:r.uid,type:r.type||'予約',name:r.name||'',in:r.in||'',out:r.out||'',adults:r.adults||'',amount:r.amount||'',phone:r.phone||'',email:r.email||'',lastContact:r.lastContact||'',notes:r.notes||''};this.editOpen=true;},
     saveEdit:function(){var s=this;var e=s.edit;
       if(e.in&&e.out&&e.out<=e.in){s.toast('チェックアウトはチェックインより後にしてください');return;}
+      // 楽観更新：先にUIへ反映して即閉じる → 裏で保存 → 失敗したら巻き戻して編集を再表示
+      var r=s.findRes(e.uid);var prev=r?JSON.parse(JSON.stringify(r)):null;
+      if(r){r.type=e.type;r.name=e.name;r.in=e.in;r.out=e.out;r.adults=e.adults;r.amount=e.amount;r.phone=e.phone;r.email=e.email;r.lastContact=e.lastContact;r.notes=e.notes;}
+      s.editOpen=false;s.toast('保存しました ✓');
       var patch={'種別':e.type,'お客さん名':e.name,'IN':e.in,'OUT':e.out,'人数':e.adults,'金額':e.amount,'電話':e.phone,'メール':e.email,'最終やりとり日':e.lastContact,'メモ':e.notes};
-      s.toast('保存中…');apiCall('update',{payload:JSON.stringify({uid:e.uid,patch:patch})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(e.uid);s.editOpen=false;s.toast('保存しました');s.loadToday();});}).catch(function(err){s.toast('エラー: '+err.message);});},
-    cancelRes:function(){var s=this;var uid=s.detail.uid;s.delConfirm=false;apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.toast('削除しました');s.editOpen=false;s.detailOpen=false;s.refreshRes();s.loadToday();}).catch(function(e){s.toast('エラー: '+e.message);});},
+      apiCall('update',{payload:JSON.stringify({uid:e.uid,patch:patch})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(e.uid);s.loadToday();});}).catch(function(err){
+        if(r&&prev)Object.keys(prev).forEach(function(k){r[k]=prev[k];});
+        s.toast('保存に失敗しました: '+err.message);s.editOpen=true;});},
+    cancelRes:function(){var s=this;var uid=s.detail.uid;s.delConfirm=false;
+      var r=s.findRes(uid);if(r)r.cancelled=true;      // 楽観更新
+      s.editOpen=false;s.detailOpen=false;s.toast('削除しました ✓');
+      apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.refreshRes();s.loadToday();}).catch(function(e){if(r)r.cancelled=false;s.toast('削除に失敗: '+e.message);});},
     submitAdd:function(){var s=this;var a=s.add;var stop=(a.type==='売り止め');
       if(!a.in||!a.out){s.toast('IN/OUTを入力してください');return;}
       if(a.out<=a.in){s.toast('チェックアウトはチェックインより後にしてください');return;}
       if(!stop&&!a.name.trim()){s.toast('お客さん名を入力してください');return;}
-      s.addBusy=true;var payload={entry_type:a.type,check_in:a.in,check_out:a.out,guest_name:a.name,num_adults:a.adults,amount:a.amount,phone:a.phone,email:a.email,notes:a.notes,block_reason:a.notes};
-      apiCall('add',{payload:JSON.stringify(payload)}).then(function(res){s.addBusy=false;s.addOpen=false;s.toast('登録しました ✓');
-        s.refreshRes(function(){s.openDetail(res.uid);s.loadToday();});}).catch(function(e){s.addBusy=false;s.toast('エラー: '+e.message);});},
+      // 楽観更新：即閉じて裏で登録。失敗時は入力を保ったままダイアログ復帰
+      s.addOpen=false;s.toast('登録中…');
+      var payload={entry_type:a.type,check_in:a.in,check_out:a.out,guest_name:a.name,num_adults:a.adults,amount:a.amount,phone:a.phone,email:a.email,notes:a.notes,block_reason:a.notes};
+      apiCall('add',{payload:JSON.stringify(payload)}).then(function(res){s.toast('登録しました ✓');
+        s.refreshRes(function(){s.openDetail(res.uid);s.loadToday();});}).catch(function(e){s.toast('登録に失敗: '+e.message);s.addOpen=true;});},
     openMsgFor:function(uid){this.tab='msg';this.msg.uid=uid;this.detailOpen=false;},
     copyMsg:function(){var s=this;var txt=this.msgText;
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){s.toast('コピーしました ✓');},function(){s.fallbackCopy(txt);});}else s.fallbackCopy(txt);},
@@ -367,6 +422,8 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-btn size="small" variant="outlined" color="primary" prepend-icon="mdi-refresh" @click="reload(false)">更新</v-btn>
         </div>
 
+        <div class="fadewrap" :key="tab"><!-- タブ切替のたびに出現アニメを再生 -->
+
         <!-- ══ 今日 ══ -->
         <template v-if="tab==='today'">
           <v-alert v-if="today && today.newRes && today.newRes.length" color="secondary" variant="tonal" density="comfortable" class="mb-4" rounded="lg" icon="mdi-bell-ring-outline">
@@ -423,12 +480,11 @@ document.addEventListener('DOMContentLoaded', function(){
           </div>
         </template>
 
-        <!-- ══ カレンダー ══ -->
+        <!-- ══ カレンダー（当月＋翌月 横並び） ══ -->
         <template v-else-if="tab==='calendar'">
           <div class="card">
             <div class="cal-toolbar">
               <v-btn icon="mdi-chevron-left" variant="text" density="comfortable" @click="calStep(-1)"></v-btn>
-              <div class="label mincho">{{ calLabel }}</div>
               <v-btn icon="mdi-chevron-right" variant="text" density="comfortable" @click="calStep(1)"></v-btn>
               <v-btn size="small" variant="text" color="primary" @click="calToday">今月へ</v-btn>
               <v-spacer></v-spacer>
@@ -438,20 +494,25 @@ document.addEventListener('DOMContentLoaded', function(){
               <span class="d-flex align-center text-caption"><span class="legend cal-stop"></span>売り止め</span>
             </div>
             <div class="cal-wrap">
-              <div class="cal-grid">
-                <div v-for="(w,i) in ['日','月','火','水','木','金','土']" :key="w" class="cal-dowcell" :class="i===0?'cal-sun':(i===6?'cal-sat':'')">{{ w }}</div>
-              </div>
-              <div v-for="(wk,wi) in calWeeks" :key="wi" class="cal-week">
-                <div class="cal-weekbg">
-                  <template v-for="(c,ci) in wk.days" :key="ci">
-                    <div v-if="!c" class="cal-cell cal-empty"></div>
-                    <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
-                      <div class="cal-day" :class="dowColor(ci)">{{ c.day }}</div>
+              <div class="cal-duo">
+                <div class="cal-month" v-for="b in monthBlocks" :key="b.y+'-'+b.m">
+                  <div class="mtitle mincho">{{ b.label }}</div>
+                  <div class="cal-grid">
+                    <div v-for="(w,i) in ['日','月','火','水','木','金','土']" :key="w" class="cal-dowcell" :class="i===0?'cal-sun':(i===6?'cal-sat':'')">{{ w }}</div>
+                  </div>
+                  <div v-for="(wk,wi) in b.weeks" :key="wi" class="cal-week">
+                    <div class="cal-weekbg">
+                      <template v-for="(c,ci) in wk.days" :key="ci">
+                        <div v-if="!c" class="cal-cell cal-empty"></div>
+                        <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
+                          <div class="cal-day" :class="dowColor(ci)">{{ c.day }}</div>
+                        </div>
+                      </template>
                     </div>
-                  </template>
-                </div>
-                <div v-for="(s,si) in wk.segs" :key="si" class="cal-seg" :class="[mediaClass(s.r),{'cal-conflict':s.conflict}]" :style="segStyle(s)" @click.stop="openDetail(s.r.uid)">
-                  <span v-if="s.showName" class="cal-segname">{{ cellName(s.r) }}</span>
+                    <div v-for="(s,si) in wk.segs" :key="si" class="cal-seg" :class="[mediaClass(s.r),{'cal-conflict':s.conflict}]" :style="segStyle(s)" @click.stop="openDetail(s.r.uid)">
+                      <span v-if="s.showName" class="cal-segname">{{ cellName(s.r) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="text-caption text-center mt-4" style="color:#A29B8A">空いている日をクリック → 予約・売り止めを登録</div>
@@ -541,6 +602,8 @@ document.addEventListener('DOMContentLoaded', function(){
             </div>
           </div>
         </template>
+
+        </div><!-- /fadewrap -->
       </div>
     </v-main>
 
