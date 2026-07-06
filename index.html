@@ -6,8 +6,10 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0">
 <script>
+/* PC・LINE外ブラウザは専用ページ pc.html へ（このページはLIFF=LINEアプリ内専用） */
+(function(){try{if(!/Line\//.test(navigator.userAgent)){location.replace('pc.html');return;}}catch(e){}
 /* キャッシュ対策：_cb が無ければ一意URLで読み直す＝常に最新を取得（GitHub Pagesでも効く） */
-(function(){try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.set('_cb',String(Date.now()));location.replace(u.toString());}}catch(e){}})();
+try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.set('_cb',String(Date.now()));location.replace(u.toString());}}catch(e){}})();
 </script>
 <title>KURA 予約</title>
 <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
@@ -80,7 +82,7 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v23', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v24', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
