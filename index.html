@@ -44,6 +44,14 @@
   .cal-book{background:#bfddf7;}
   .cal-priv{background:#bfe8ca;}
   .cal-stop{background:repeating-linear-gradient(45deg,#dfe4e7,#dfe4e7 6px,#cbd2d6 6px,#cbd2d6 12px);}
+  /* PC表示：横に広がりすぎないよう中央寄せ＋最大幅、カレンダーのマスも少し高く
+     （ダイアログはbody直下にテレポートされるので .v-main 配下だけ絞れば安全） */
+  @media(min-width:960px){
+    .v-main .v-container{max-width:880px;margin-left:auto;margin-right:auto;}
+    .cal-cell{min-height:84px;}
+    .cal-seg{top:27px;height:26px;}
+    .cal-segname{font-size:12.5px;}
+  }
 </style>
 </head>
 <body>
@@ -56,7 +64,9 @@
 var LIFF_ID='2010467474-F0WkGdDW';
 var API='https://script.google.com/macros/s/AKfycbya86LLxu2tq-8br3eWhjcyC0bd1yfkIPD7YR60fATxC1DX5k24xAI7Bs0cmDFNnOE6/exec';
 var ID_TOKEN='';
-function apiCall(action,params){params=params||{};var q='?action='+encodeURIComponent(action)+'&idToken='+encodeURIComponent(ID_TOKEN);
+var AUTH_PW='';   // PC・LINE外ブラウザ用：共有パスワード認証
+function apiCall(action,params){params=params||{};
+  var q='?action='+encodeURIComponent(action)+(AUTH_PW?('&pw='+encodeURIComponent(AUTH_PW)):('&idToken='+encodeURIComponent(ID_TOKEN)));
   Object.keys(params).forEach(function(k){q+='&'+k+'='+encodeURIComponent(params[k]);});
   return fetch(API+q).then(function(r){return r.json();}).then(function(j){if(!j.ok)throw new Error(j.error||'error');return j.data;});}
 function p2(n){return (n<10?'0':'')+n;}
@@ -69,7 +79,8 @@ function fmtJa(s){if(!s)return '';var p=String(s).split('-');if(p.length!==3)ret
 var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
-    ver:'v22', tab:'today', loading:false, snack:false, snackText:'',
+    mode:'', needPw:false, pwInput:'', pwErr:'',
+    ver:'v23', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -208,11 +219,29 @@ var App={
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){s.toast('コピーしました ✓');},function(){s.fallbackCopy(txt);});}else s.fallbackCopy(txt);},
     fallbackCopy:function(txt){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');this.toast('コピーしました ✓');}catch(e){this.toast('コピー失敗');}document.body.removeChild(ta);},
     boot:function(){var s=this;
-      liff.init({liffId:LIFF_ID}).then(function(){
-        if(!liff.isLoggedIn()){liff.login();return;}
-        ID_TOKEN=liff.getIDToken();
-        apiCall('whoami',{}).then(function(me){s.myId=me.userId;s.allowed=me.allowed;s.ready=true;if(me.allowed)s.loadToday();}).catch(function(e){s.err=e.message;s.ready=true;});
-      }).catch(function(e){s.err='LIFF初期化エラー: '+e.message;s.ready=true;});}
+      var savedPw=(window.localStorage&&localStorage.getItem('kura_pw'))||'';
+      function pwPath(){s.mode='pw';if(savedPw){AUTH_PW=savedPw;s.bootstrap();}else{s.ready=true;s.needPw=true;}}
+      // LINEアプリ内ブラウザのUAには "Line/" が入る。無ければLIFF初期化を待たず即パスワード経路（PCの起動を速く）
+      if(!/Line\//.test(navigator.userAgent)){ pwPath(); return; }
+      try{
+        liff.init({liffId:LIFF_ID}).then(function(){
+          if(liff.isInClient()){                      // LINEアプリ内 → 従来どおりLINEログイン
+            if(!liff.isLoggedIn()){liff.login();return;}
+            ID_TOKEN=liff.getIDToken();s.mode='line';s.bootstrap();
+          }else{ pwPath(); }                           // 外部ブラウザ → パスワード
+        }).catch(function(){ pwPath(); });             // LIFF不可でも入れる
+      }catch(e){ pwPath(); }
+    },
+    bootstrap:function(){var s=this;s.loading=true;
+      apiCall('bootstrap',{}).then(function(d){
+        s.myId=(d.me&&d.me.userId)||'';s.allowed=!!(d.me&&d.me.allowed);s.ready=true;s.loading=false;s.needPw=false;
+        if(s.allowed){s.today=d.today||null;s.res=(d.list&&d.list.items)||[];s.tpl=(d.templates&&d.templates.items)||[];}
+      }).catch(function(e){s.loading=false;s.ready=true;
+        if(s.mode==='pw'){s.needPw=true;s.pwErr='パスワードが違うか、通信エラーです';AUTH_PW='';if(window.localStorage)localStorage.removeItem('kura_pw');}
+        else{s.err=e.message;}
+      });},
+    submitPw:function(){var s=this;if(!s.pwInput){s.pwErr='パスワードを入力してください';return;}
+      AUTH_PW=s.pwInput;s.pwErr='';s.needPw=false;if(window.localStorage)localStorage.setItem('kura_pw',s.pwInput);s.bootstrap();},
   },
   mounted:function(){this.boot();},
   template:'#tpl'
@@ -239,6 +268,17 @@ document.addEventListener('DOMContentLoaded', function(){
   <div v-if="!ready" class="ctr">
     <v-progress-circular indeterminate color="primary" size="44"></v-progress-circular>
     <div style="color:#6B7280">読み込み中…</div>
+  </div>
+
+  <!-- パスワードログイン（PC・LINE外ブラウザ） -->
+  <div v-else-if="needPw" class="ctr">
+    <v-icon size="46" color="primary">mdi-lock-outline</v-icon>
+    <div style="font-weight:700;font-size:18px">KURA 予約管理</div>
+    <div style="color:#6B7280">パスワードを入力してください</div>
+    <v-card class="pa-4" border flat style="width:100%;max-width:340px">
+      <v-text-field v-model="pwInput" type="password" label="パスワード" variant="outlined" density="comfortable" hide-details="auto" :error-messages="pwErr" @keyup.enter="submitPw"></v-text-field>
+      <v-btn color="primary" block size="large" class="mt-3" @click="submitPw">ログイン</v-btn>
+    </v-card>
   </div>
 
   <!-- エラー -->
