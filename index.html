@@ -82,7 +82,7 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v25', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v26', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -219,17 +219,31 @@ var App={
       return defs.map(function(d){return {col:d[0],label:d[1],done:!!(r.tasks&&r.tasks[d[0]])};});},
     toggleDetail:function(r,col){var s=this;var done=!!(r.tasks&&r.tasks[col]);if(r.tasks)r.tasks[col]=!done;
       apiCall('toggleTask',{uid:r.uid,taskKey:col,value:!done}).then(function(){}).catch(function(e){if(r.tasks)r.tasks[col]=done;s.toast('エラー: '+e.message);});},
-    setType:function(uid,type){var s=this;s.toast(type+'にしました');apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'種別':type}})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(uid);});}).catch(function(e){s.toast('エラー: '+e.message);});},
+    setType:function(uid,type){var s=this;var r=s.findRes(uid);var prev=r?r.type:'';
+      if(r)r.type=type;s.toast(type+'にしました ✓');
+      apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'種別':type}})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(uid);s.loadToday();});}).catch(function(e){if(r)r.type=prev;s.toast('保存に失敗: '+e.message);});},
     openEdit:function(){var r=this.detail;this.edit={uid:r.uid,type:r.type||'予約',name:r.name||'',in:r.in||'',out:r.out||'',adults:r.adults||'',amount:r.amount||'',phone:r.phone||'',email:r.email||'',lastContact:r.lastContact||'',notes:r.notes||''};this.editOpen=true;},
-    saveEdit:function(){var s=this;var e=s.edit;var patch={'種別':e.type,'お客さん名':e.name,'IN':e.in,'OUT':e.out,'人数':e.adults,'金額':e.amount,'電話':e.phone,'メール':e.email,'最終やりとり日':e.lastContact,'メモ':e.notes};
-      s.toast('保存中…');apiCall('update',{payload:JSON.stringify({uid:e.uid,patch:patch})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(e.uid);s.editOpen=false;s.toast('保存しました');});}).catch(function(err){s.toast('エラー: '+err.message);});},
-    cancelRes:function(){var s=this;var uid=s.detail.uid;s.delConfirm=false;apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.toast('削除しました');s.editOpen=false;s.detailOpen=false;s.refreshRes();}).catch(function(e){s.toast('エラー: '+e.message);});},
+    saveEdit:function(){var s=this;var e=s.edit;
+      // 楽観更新：先にUIへ反映して即閉じる → 裏で保存 → 失敗したら巻き戻して編集を再表示
+      var r=s.findRes(e.uid);var prev=r?JSON.parse(JSON.stringify(r)):null;
+      if(r){r.type=e.type;r.name=e.name;r.in=e.in;r.out=e.out;r.adults=e.adults;r.amount=e.amount;r.phone=e.phone;r.email=e.email;r.lastContact=e.lastContact;r.notes=e.notes;}
+      s.editOpen=false;s.toast('保存しました ✓');
+      var patch={'種別':e.type,'お客さん名':e.name,'IN':e.in,'OUT':e.out,'人数':e.adults,'金額':e.amount,'電話':e.phone,'メール':e.email,'最終やりとり日':e.lastContact,'メモ':e.notes};
+      apiCall('update',{payload:JSON.stringify({uid:e.uid,patch:patch})}).then(function(){s.refreshRes(function(){s.detail=s.findRes(e.uid);s.loadToday();});}).catch(function(err){
+        if(r&&prev)Object.keys(prev).forEach(function(k){r[k]=prev[k];});
+        s.toast('保存に失敗しました: '+err.message);s.editOpen=true;});},
+    cancelRes:function(){var s=this;var uid=s.detail.uid;s.delConfirm=false;
+      var r=s.findRes(uid);if(r)r.cancelled=true;      // 楽観更新
+      s.editOpen=false;s.detailOpen=false;s.toast('削除しました ✓');
+      apiCall('update',{payload:JSON.stringify({uid:uid,patch:{'キャンセル':true}})}).then(function(){s.refreshRes();s.loadToday();}).catch(function(e){if(r)r.cancelled=false;s.toast('削除に失敗: '+e.message);});},
     submitAdd:function(){var s=this;var a=s.add;var stop=(a.type==='売り止め');
       if(!a.in||!a.out){s.toast('IN/OUTを入力してください');return;}
       if(!stop&&!a.name.trim()){s.toast('お客さん名を入力してください');return;}
-      s.addBusy=true;var payload={entry_type:a.type,check_in:a.in,check_out:a.out,guest_name:a.name,num_adults:a.adults,amount:a.amount,phone:a.phone,email:a.email,notes:a.notes,block_reason:a.notes};
-      apiCall('add',{payload:JSON.stringify(payload)}).then(function(res){s.addBusy=false;s.addOpen=false;s.toast('登録しました ✓');
-        s.refreshRes(function(){s.openDetail(res.uid);});}).catch(function(e){s.addBusy=false;s.toast('エラー: '+e.message);});},
+      // 楽観更新：即閉じて裏で登録。失敗時は入力を保ったままダイアログ復帰
+      s.addOpen=false;s.toast('登録中…');
+      var payload={entry_type:a.type,check_in:a.in,check_out:a.out,guest_name:a.name,num_adults:a.adults,amount:a.amount,phone:a.phone,email:a.email,notes:a.notes,block_reason:a.notes};
+      apiCall('add',{payload:JSON.stringify(payload)}).then(function(res){s.toast('登録しました ✓');
+        s.refreshRes(function(){s.openDetail(res.uid);s.loadToday();});}).catch(function(e){s.toast('登録に失敗: '+e.message);s.addOpen=true;});},
     openMsgFor:function(uid){var s=this;s.tab='msg';s.msg.uid=uid;this.$nextTick(function(){s.ensureRes('msg');});this.detailOpen=false;},
     copyMsg:function(){var s=this;var txt=this.msgText;
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){s.toast('コピーしました ✓');},function(){s.fallbackCopy(txt);});}else s.fallbackCopy(txt);},
@@ -243,7 +257,11 @@ var App={
         liff.init({liffId:LIFF_ID}).then(function(){
           if(liff.isInClient()){                      // LINEアプリ内 → 従来どおりLINEログイン
             if(!liff.isLoggedIn()){liff.login();return;}
-            ID_TOKEN=liff.getIDToken();s.mode='line';s.bootstrap();
+            ID_TOKEN=liff.getIDToken();s.mode='line';
+            // 前回データを即表示（stale-while-revalidate）→ 裏で最新に差し替え
+            var cache=null;try{cache=JSON.parse((window.localStorage&&localStorage.getItem('kura_cache'))||'null');}catch(e){}
+            if(cache&&cache.res){s.today=cache.today||null;s.res=cache.res||[];s.tpl=cache.tpl||[];s.allowed=true;s.ready=true;if(s.tab==='today')s.loadToday();}
+            s.bootstrap();
           }else{ pwPath(); }                           // 外部ブラウザ → パスワード
         }).catch(function(){ pwPath(); });             // LIFF不可でも入れる
       }catch(e){ pwPath(); }
@@ -251,8 +269,12 @@ var App={
     bootstrap:function(){var s=this;s.loading=true;
       apiCall('bootstrap',{}).then(function(d){
         s.myId=(d.me&&d.me.userId)||'';s.allowed=!!(d.me&&d.me.allowed);s.ready=true;s.loading=false;s.needPw=false;
-        if(s.allowed){s.today=d.today||null;s.res=(d.list&&d.list.items)||[];s.tpl=(d.templates&&d.templates.items)||[];}
-      }).catch(function(e){s.loading=false;s.ready=true;
+        if(s.allowed){s.today=d.today||null;s.res=(d.list&&d.list.items)||[];s.tpl=(d.templates&&d.templates.items)||[];
+          try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:s.today,res:s.res,tpl:s.tpl}));}catch(e){}
+        }else{try{if(window.localStorage)localStorage.removeItem('kura_cache');}catch(e){}}
+      }).catch(function(e){s.loading=false;
+        if(s.ready&&s.res.length){s.toast('更新に失敗しました（前回のデータを表示中）');return;} // キャッシュ表示中なら致命にしない
+        s.ready=true;
         if(s.mode==='pw'){s.needPw=true;s.pwErr='パスワードが違うか、通信エラーです';AUTH_PW='';if(window.localStorage)localStorage.removeItem('kura_pw');}
         else{s.err=e.message;}
       });},
