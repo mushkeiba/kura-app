@@ -82,7 +82,7 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v24', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v25', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -132,21 +132,35 @@ var App={
       return cells;
     },
     calWeeks:function(){
+      // 帯は「IN日の午後〜OUT日の午前」の半日オフセット表示（チェックアウト日も見える）
       var arr=this.calCells.slice();
       while(arr.length%7)arr.push(null);
+      var res=this.res;
       var weeks=[];
       for(var w=0;w<arr.length/7;w++){
         var days=arr.slice(w*7,w*7+7);
-        var segs=[],j=0;
-        while(j<7){
-          var c=days[j];
-          if(c&&c.r){
-            var uid=c.r.uid,k=j,conflict=!!c.conflict,showName=!!days[j].start;
-            while(k+1<7&&days[k+1]&&days[k+1].r&&days[k+1].r.uid===uid){k++;if(days[k].conflict)conflict=true;if(days[k].start)showName=true;}
-            if(!showName&&j===0)showName=true; // 週またぎの継続は週頭に名前
-            segs.push({col:j+1,span:k-j+1,r:c.r,conflict:conflict,showName:showName});
-            j=k+1;
-          }else j++;
+        var idx={},firstReal=-1,lastReal=-1;
+        days.forEach(function(c,ci){if(c){idx[c.date]=ci;if(firstReal<0)firstReal=ci;lastReal=ci;}});
+        var segs=[];
+        if(firstReal>=0){
+          var weekFirst=days[firstReal].date,weekLast=days[lastReal].date;
+          res.forEach(function(r){
+            if(r.cancelled||!r.in||!r.out)return;
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(String(r.in))||!/^\d{4}-\d{2}-\d{2}$/.test(String(r.out)))return;
+            if(r.out<weekFirst||r.in>weekLast)return;
+            var startsHere=(idx[r.in]!==undefined);
+            var endsHere=(idx[r.out]!==undefined);
+            var pos=startsHere?idx[r.in]+0.5:firstReal;
+            var end=endsHere?idx[r.out]+0.5:lastReal+1;
+            if(end-pos<=0.05)return;
+            var conflict=false;
+            for(var ci=firstReal;ci<=lastReal;ci++){
+              var c=days[ci];if(!c)continue;
+              if(c.date>=r.in&&c.date<r.out&&c.conflict){conflict=true;break;}
+            }
+            segs.push({pos:pos,len:end-pos,r:r,conflict:conflict,showName:startsHere||pos===firstReal});
+          });
+          segs.sort(function(a,b){return a.pos-b.pos;});
         }
         weeks.push({days:days,segs:segs});
       }
@@ -189,7 +203,7 @@ var App={
     mediaClass:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return 'cal-stop';if(r.channel==='エアビー')return 'cal-air';if(r.channel==='ブッキング')return 'cal-book';return 'cal-priv';},
     dowColor:function(i){var d=i%7;return d===0?'cal-sun':(d===6?'cal-sat':'');},
     cellName:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return '売り止め';return (r.name&&r.name.trim())?r.name:this.chLabel(r);},
-    segStyle:function(s){var L=(s.col-1)/7*100,W=s.span/7*100;return {left:'calc('+L+'% + 2px)',width:'calc('+W+'% - 4px)'};},
+    segStyle:function(s){var L=s.pos/7*100,W=s.len/7*100;return {left:'calc('+L+'% + 2px)',width:'calc('+W+'% - 4px)'};},
     onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:this.addDays(date,1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     addDays:function(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},
