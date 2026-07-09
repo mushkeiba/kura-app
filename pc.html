@@ -205,7 +205,7 @@ function addDays(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p
 var App={
   data:function(){return{
     ready:false, needPw:true, pwInput:'', pwErr:'', busyPw:false,
-    ver:'pc-v6', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'pc-v7', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     q:'', showPast:false,
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
@@ -336,7 +336,16 @@ var App={
         else if(first){s.toast('読み込みエラー: '+e.message);}
       });},
     applyBoot:function(d){this.today=d.today||null;this.res=(d.list&&d.list.items)||[];this.tpl=(d.templates&&d.templates.items)||[];
-      try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:this.today,res:this.res,tpl:this.tpl}));}catch(e){}},
+      try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:this.today,res:this.res,tpl:this.tpl}));}catch(e){}
+      this.prefetchFinance_();},
+    // 収支タブは他タブと違いbootstrapに含めない（開く人ばかりじゃないので毎回の起動を遅くしない）。
+    // その代わり起動直後に裏で1回だけ静かに取得しておき、実際にタブを開いた時は
+    // 大抵キャッシュ済み＝待たされない、という体感にする。
+    prefetchFinance_:function(){var s=this;if(s.tab==='finance')return;
+      var rp=s.finRangeParams();var gran=s.finGranChoice;var key=rp.from+'|'+rp.to+'|'+gran;
+      if(s.finCache[key])return;
+      var params={};if(rp.from)params.from=rp.from;if(rp.to)params.to=rp.to;if(gran!=='auto')params.granularity=gran;
+      apiCall('finance',params).then(function(d){s.finCache[key]=d;}).catch(function(){});},
     logout:function(){AUTH_PW='';this.pwInput='';if(window.localStorage){localStorage.removeItem('kura_pw');localStorage.removeItem('kura_cache');}this.needPw=true;},
 
     refreshRes:function(cb){var s=this;apiCall('list',{}).then(function(d){s.res=d.items||[];if(cb)cb();});},

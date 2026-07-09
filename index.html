@@ -136,7 +136,7 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v29', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v30', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -320,6 +320,13 @@ var App={
     copyMsg:function(){var s=this;var txt=this.msgText;
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){s.toast('コピーしました ✓');},function(){s.fallbackCopy(txt);});}else s.fallbackCopy(txt);},
     fallbackCopy:function(txt){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');this.toast('コピーしました ✓');}catch(e){this.toast('コピー失敗');}document.body.removeChild(ta);},
+    // 収支タブは他タブと違いbootstrapに含めない（毎回の起動を遅くしないため）。
+    // 起動直後に裏で1回だけ静かに取得しておき、実際にタブを開いた時は大抵キャッシュ済みにする。
+    prefetchFinance_:function(){var s=this;if(s.tab==='finance')return;
+      var rp=s.finRangeParams();var gran=s.finGranChoice;var key=rp.from+'|'+rp.to+'|'+gran;
+      if(s.finCache[key])return;
+      var params={};if(rp.from)params.from=rp.from;if(rp.to)params.to=rp.to;if(gran!=='auto')params.granularity=gran;
+      apiCall('finance',params).then(function(d){s.finCache[key]=d;}).catch(function(){});},
     finRangeParams:function(){
       var mode=this.finRangeMode;
       if(mode==='month'){var p=this.finMonth.split('-');var last=new Date(+p[0],+p[1],0).getDate();return{from:this.finMonth+'-01',to:this.finMonth+'-'+(last<10?'0':'')+last};}
@@ -384,6 +391,7 @@ var App={
         s.myId=(d.me&&d.me.userId)||'';s.allowed=!!(d.me&&d.me.allowed);s.ready=true;s.loading=false;s.needPw=false;
         if(s.allowed){s.today=d.today||null;s.res=(d.list&&d.list.items)||[];s.tpl=(d.templates&&d.templates.items)||[];
           try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:s.today,res:s.res,tpl:s.tpl}));}catch(e){}
+          s.prefetchFinance_();
         }else{try{if(window.localStorage)localStorage.removeItem('kura_cache');}catch(e){}}
       }).catch(function(e){s.loading=false;
         if(s.ready&&s.res.length){s.toast('更新に失敗しました（前回のデータを表示中）');return;} // キャッシュ表示中なら致命にしない
