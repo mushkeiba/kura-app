@@ -82,14 +82,18 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v26', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v27', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
     addOpen:false, addBusy:false,
     cal:(function(){var d=new Date();return {y:d.getFullYear(),m:d.getMonth()+1};})(),
     pick:{inOpen:false,outOpen:false,eInOpen:false,eOutOpen:false},
-    msg:{uid:'',tpl:'',lang:'ja',code:''}
+    msg:{uid:'',tpl:'',lang:'ja',code:''},
+    fin:null, finMonth:(function(){var d=new Date();return d.getFullYear()+'-'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);})(),
+    finLoading:false,
+    exp:{date:todayStr(),category:'清掃',amount:'',memo:''},
+    expOpen:false, expBusy:false
   };},
   computed:{
     todoList:function(){
@@ -181,9 +185,10 @@ var App={
         .replace(/\{IN日\}/g,fmtJaShort(r.in)).replace(/\{check-in date\}/g,fmtMd(r.in))
         .replace(/\{OUT日\}/g,fmtJaShort(r.out)).replace(/\{check-out date\}/g,fmtMd(r.out))
         .replace(/\{暗証番号\}/g,c).replace(/\{door code\}/g,c);
-    }
+    },
+    finMonthLabel:function(){var p=this.finMonth.split('-');return p[0]+'年 '+(+p[1])+'月';}
   },
-  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); } },
+  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); else if(v==='finance'&&!this.fin)this.loadFinance(); } },
   methods:{
     fmtMd:fmtMd, fmtJa:fmtJa, fmtJaShort:fmtJaShort,
     toast:function(m){this.snackText=m;this.snack=true;},
@@ -248,6 +253,18 @@ var App={
     copyMsg:function(){var s=this;var txt=this.msgText;
       if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){s.toast('コピーしました ✓');},function(){s.fallbackCopy(txt);});}else s.fallbackCopy(txt);},
     fallbackCopy:function(txt){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');this.toast('コピーしました ✓');}catch(e){this.toast('コピー失敗');}document.body.removeChild(ta);},
+    loadFinance:function(){var s=this;s.finLoading=true;
+      apiCall('finance',{month:s.finMonth}).then(function(d){s.fin=d;s.finLoading=false;}).catch(function(e){s.finLoading=false;s.toast('収支の読み込みに失敗: '+e.message);});},
+    finStep:function(n){var p=this.finMonth.split('-');var y=+p[0],m=+p[1]+n;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.finMonth=y+'-'+(m<10?'0':'')+m;this.loadFinance();},
+    finThisMonth:function(){var d=new Date();this.finMonth=d.getFullYear()+'-'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);this.loadFinance();},
+    openExpAdd:function(){this.exp={date:todayStr(),category:'清掃',amount:'',memo:''};this.expOpen=true;},
+    submitExp:function(){var s=this;var e=s.exp;
+      if(!e.date){s.toast('日付を入力してください');return;}
+      if(!Number(e.amount)){s.toast('金額を入力してください');return;}
+      s.expBusy=true;
+      apiCall('addExpense',{payload:JSON.stringify(e)}).then(function(){s.expBusy=false;s.expOpen=false;s.toast('支出を登録しました ✓');s.loadFinance();})
+        .catch(function(err){s.expBusy=false;s.toast('登録に失敗: '+err.message);});},
+    deleteExp:function(uid){var s=this;apiCall('deleteExpense',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadFinance();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
     boot:function(){var s=this;
       var savedPw=(window.localStorage&&localStorage.getItem('kura_pw'))||'';
       function pwPath(){s.mode='pw';if(savedPw){AUTH_PW=savedPw;s.bootstrap();}else{s.ready=true;s.needPw=true;}}
@@ -344,6 +361,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <span v-if="tab==='today'">今日のやること</span>
         <span v-else-if="tab==='list'">予約一覧</span>
         <span v-else-if="tab==='add'">予約を追加</span>
+        <span v-else-if="tab==='finance'">収支</span>
         <span v-else>メッセージ</span>
         <span class="text-caption text-disabled ml-2" style="font-weight:400">{{ ver }}</span>
       </v-app-bar-title>
@@ -543,6 +561,78 @@ document.addEventListener('DOMContentLoaded', function(){
           </v-container>
         </v-window-item>
 
+        <!-- 収支 -->
+        <v-window-item value="finance">
+          <v-container>
+            <div class="d-flex align-center justify-space-between mb-1">
+              <v-btn icon="mdi-chevron-left" variant="text" @click="finStep(-1)"></v-btn>
+              <div class="text-h6 font-weight-bold">{{ finMonthLabel }}</div>
+              <v-btn icon="mdi-chevron-right" variant="text" @click="finStep(1)"></v-btn>
+            </div>
+            <div class="text-center mb-4"><v-btn size="small" variant="text" color="primary" @click="finThisMonth">今月へ</v-btn></div>
+
+            <div v-if="finLoading" class="text-center text-medium-emphasis py-8">読み込み中…</div>
+
+            <template v-else-if="fin">
+              <v-card class="mb-5 pa-5 text-center">
+                <div class="text-caption text-medium-emphasis mb-1">この月の収支</div>
+                <div style="font-size:30px;font-weight:800" :class="fin.balance<0?'text-error':'text-success'">{{ fin.balance<0?'−':'+' }}¥{{ Math.abs(fin.balance).toLocaleString() }}</div>
+                <div class="text-caption text-medium-emphasis mt-2">ネット収入 ¥{{ fin.income.netTotal.toLocaleString() }}　−　支出 ¥{{ fin.expense.total.toLocaleString() }}</div>
+              </v-card>
+
+              <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">収入</div>
+              <v-card v-if="!fin.income.items.length" class="mb-5"><v-card-text class="text-center text-medium-emphasis py-6">この月の収入はありません</v-card-text></v-card>
+              <v-card v-else class="mb-5">
+                <v-list lines="two">
+                  <template v-for="(it,i) in fin.income.items" :key="it.uid">
+                    <v-list-item>
+                      <template #prepend><v-chip size="x-small" :color="chColor(it)" variant="flat">{{ chLabel(it) }}</v-chip></template>
+                      <v-list-item-title class="font-weight-bold ml-2 text-truncate">{{ it.name||'お名前未設定' }}</v-list-item-title>
+                      <v-list-item-subtitle class="ml-2">{{ fmtMd(it.in) }}→{{ fmtMd(it.out) }}　手数料 −¥{{ it.commission.toLocaleString() }}</v-list-item-subtitle>
+                      <template #append>
+                        <div class="text-right">
+                          <div class="font-weight-bold">¥{{ it.net.toLocaleString() }}</div>
+                          <div v-if="it.confirmed" class="text-caption text-success">確定</div>
+                        </div>
+                      </template>
+                    </v-list-item>
+                    <v-divider v-if="i<fin.income.items.length-1"></v-divider>
+                  </template>
+                </v-list>
+                <v-divider></v-divider>
+                <div class="d-flex justify-space-between px-4 py-3 font-weight-bold" style="background:#FAFAFA">
+                  <span>合計</span><span>¥{{ fin.income.netTotal.toLocaleString() }}</span>
+                </div>
+              </v-card>
+
+              <div class="d-flex align-center justify-space-between mb-2 ml-1">
+                <div class="text-medium-emphasis text-caption font-weight-bold" style="letter-spacing:.08em">支出</div>
+                <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" @click="openExpAdd">追加</v-btn>
+              </div>
+              <v-card v-if="!fin.expense.items.length" class="mb-5"><v-card-text class="text-center text-medium-emphasis py-6">この月の支出はありません</v-card-text></v-card>
+              <v-card v-else class="mb-5">
+                <v-list>
+                  <template v-for="(e,i) in fin.expense.items" :key="e.uid">
+                    <v-list-item>
+                      <v-list-item-title>{{ e.category }}<span class="text-medium-emphasis ml-2 text-body-2">{{ fmtMd(e.date) }}</span></v-list-item-title>
+                      <v-list-item-subtitle v-if="e.memo">{{ e.memo }}</v-list-item-subtitle>
+                      <template #append>
+                        <span class="font-weight-bold mr-2">¥{{ Number(e.amount).toLocaleString() }}</span>
+                        <v-btn icon="mdi-close" size="x-small" variant="text" @click="deleteExp(e.uid)"></v-btn>
+                      </template>
+                    </v-list-item>
+                    <v-divider v-if="i<fin.expense.items.length-1"></v-divider>
+                  </template>
+                </v-list>
+                <v-divider></v-divider>
+                <div class="d-flex justify-space-between px-4 py-3 font-weight-bold" style="background:#FAFAFA">
+                  <span>合計</span><span>¥{{ fin.expense.total.toLocaleString() }}</span>
+                </div>
+              </v-card>
+            </template>
+          </v-container>
+        </v-window-item>
+
       </v-window>
     </v-main>
 
@@ -684,6 +774,23 @@ document.addEventListener('DOMContentLoaded', function(){
       </v-card>
     </v-dialog>
 
+    <!-- 支出を追加 -->
+    <v-dialog v-model="expOpen" fullscreen transition="dialog-bottom-transition">
+      <v-card rounded="0" border="0">
+        <v-toolbar flat border density="comfortable" style="background:#FFFFFF">
+          <v-btn icon="mdi-chevron-down" variant="text" @click="expOpen=false"></v-btn>
+          <v-toolbar-title style="font-weight:700;color:#1F2328">支出を追加</v-toolbar-title>
+        </v-toolbar>
+        <v-card-text style="background:#FAFAFA">
+          <v-text-field v-model="exp.date" label="日付" type="date" variant="outlined" density="comfortable"></v-text-field>
+          <v-select v-model="exp.category" :items="['清掃','消耗品','印刷','会費','その他']" label="カテゴリ" variant="outlined" density="comfortable"></v-select>
+          <v-text-field v-model="exp.amount" label="金額" type="number" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-model="exp.memo" label="メモ" variant="outlined" density="comfortable"></v-text-field>
+          <v-btn color="primary" block size="large" :loading="expBusy" @click="submitExp">登録する</v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
     <!-- 日付ピッカー（共通） -->
     <v-dialog v-model="pick.inOpen" width="auto"><v-date-picker :model-value="toDateObj(add.in)" @update:model-value="onPickIn" color="primary" title="チェックイン" show-adjacent-months></v-date-picker></v-dialog>
     <v-dialog v-model="pick.outOpen" width="auto"><v-date-picker :model-value="toDateObj(add.out)" @update:model-value="onPickOut" color="primary" title="チェックアウト" show-adjacent-months></v-date-picker></v-dialog>
@@ -696,6 +803,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <v-btn value="list"><v-icon>mdi-format-list-bulleted</v-icon>予約</v-btn>
       <v-btn value="calendar"><v-icon>mdi-calendar-month-outline</v-icon>カレンダー</v-btn>
       <v-btn value="msg"><v-icon>mdi-email-outline</v-icon>メッセ</v-btn>
+      <v-btn value="finance"><v-icon>mdi-cash-multiple</v-icon>収支</v-btn>
     </v-bottom-navigation>
 
     <v-snackbar v-model="snack" timeout="2000" location="bottom">{{ snackText }}</v-snackbar>
