@@ -100,6 +100,10 @@ try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.s
   .fin-bar-val{font-size:11px;font-weight:800;color:#1F2328;margin-bottom:6px;white-space:nowrap;}
   .fin-bar-label{font-size:11px;color:#8A8577;margin-top:9px;white-space:nowrap;}
   .fin-chart-empty{padding:36px;text-align:center;color:#A29B8A;font-size:13px;}
+  .fin-occ-dot{width:20px;height:5px;border-radius:3px;margin-top:8px;background:#EDE6DB;border:1px solid #E3DCCF;}
+  .fin-occ-dot.on{background:#3D4A35;border-color:#3D4A35;}
+  .fin-legend{display:flex;align-items:center;gap:16px;padding:0 16px 16px;font-size:12px;color:#8A8577;}
+  .fin-legend .sw{width:16px;height:5px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle;}
 
   .fin-total-row{display:flex;justify-content:space-between;padding:14px 16px;background:#F8F4EC;font-weight:800;}
   @keyframes finRise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
@@ -136,7 +140,7 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v30', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v31', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -743,13 +747,20 @@ document.addEventListener('DOMContentLoaded', function(){
                   </div>
                 </div>
                 <div v-if="!fin.series.length" class="fin-chart-empty">この期間のデータはありません</div>
-                <div v-else class="fin-chart">
-                  <div class="fin-bar-wrap" v-for="pt in fin.series" :key="pt.period" :class="{neg: pt[finMetric]<0}">
-                    <div class="fin-bar-val">¥{{ fmtYenShort(pt[finMetric]) }}</div>
-                    <div class="fin-bar" :style="{height: (barsReady?barPct(pt):0)+'%'}"></div>
-                    <div class="fin-bar-label">{{ seriesLabel(pt.period) }}</div>
+                <template v-else>
+                  <div class="fin-chart">
+                    <div class="fin-bar-wrap" v-for="pt in fin.series" :key="pt.period" :class="{neg: pt[finMetric]<0}">
+                      <div class="fin-bar-val" v-if="pt[finMetric]">¥{{ fmtYenShort(pt[finMetric]) }}</div>
+                      <div class="fin-bar" :style="{height: (barsReady?barPct(pt):0)+'%'}"></div>
+                      <div v-if="fin.granularity==='day'" class="fin-occ-dot" :class="{on: pt.occupied}"></div>
+                      <div class="fin-bar-label">{{ seriesLabel(pt.period) }}</div>
+                    </div>
                   </div>
-                </div>
+                  <div v-if="fin.granularity==='day'" class="fin-legend">
+                    <span><span class="sw" style="background:#3D4A35"></span>在室中</span>
+                    <span><span class="sw" style="background:#EDE6DB;border:1px solid #E3DCCF"></span>空き</span>
+                  </div>
+                </template>
               </div>
 
               <div class="text-medium-emphasis text-caption font-weight-bold mb-2 ml-1" style="letter-spacing:.08em">収入の内訳</div>

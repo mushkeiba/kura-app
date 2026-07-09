@@ -152,6 +152,10 @@
   .fin-bar-val{font-size:10.5px;font-weight:700;color:var(--ink);margin-bottom:6px;font-variant-numeric:tabular-nums;white-space:nowrap;}
   .fin-bar-label{font-size:10.5px;color:#8A8577;margin-top:9px;white-space:nowrap;}
   .fin-chart-empty{padding:44px;text-align:center;color:#A29B8A;font-size:13px;}
+  .fin-occ-dot{width:18px;height:5px;border-radius:3px;margin-top:7px;background:#EDE6DB;border:1px solid var(--line);}
+  .fin-occ-dot.on{background:var(--moss);border-color:var(--moss);}
+  .fin-legend{display:flex;align-items:center;gap:14px;padding:0 18px 14px;font-size:11.5px;color:#8A8577;}
+  .fin-legend .sw{width:14px;height:5px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:middle;}
 
   /* Vuetify 微調整 */
   .v-field{background:#FFFDF9 !important;}
@@ -205,7 +209,7 @@ function addDays(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p
 var App={
   data:function(){return{
     ready:false, needPw:true, pwInput:'', pwErr:'', busyPw:false,
-    ver:'pc-v7', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'pc-v8', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     q:'', showPast:false,
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
@@ -821,13 +825,20 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
               </div>
               <div v-if="!fin.series.length" class="fin-chart-empty">この期間のデータはありません</div>
-              <div v-else class="fin-chart">
-                <div class="fin-bar-wrap" v-for="pt in fin.series" :key="pt.period" :class="{neg: pt[finMetric]<0}">
-                  <div class="fin-bar-val">¥{{ fmtYenShort(pt[finMetric]) }}</div>
-                  <div class="fin-bar" :style="{height: (barsReady?barPct(pt):0)+'%'}"></div>
-                  <div class="fin-bar-label">{{ seriesLabel(pt.period) }}</div>
+              <template v-else>
+                <div class="fin-chart">
+                  <div class="fin-bar-wrap" v-for="pt in fin.series" :key="pt.period" :class="{neg: pt[finMetric]<0}">
+                    <div class="fin-bar-val" v-if="pt[finMetric]">¥{{ fmtYenShort(pt[finMetric]) }}</div>
+                    <div class="fin-bar" :style="{height: (barsReady?barPct(pt):0)+'%'}"></div>
+                    <div v-if="fin.granularity==='day'" class="fin-occ-dot" :class="{on: pt.occupied}"></div>
+                    <div class="fin-bar-label">{{ seriesLabel(pt.period) }}</div>
+                  </div>
                 </div>
-              </div>
+                <div v-if="fin.granularity==='day'" class="fin-legend">
+                  <span><span class="sw" style="background:var(--moss)"></span>在室中</span>
+                  <span><span class="sw" style="background:#EDE6DB;border:1px solid var(--line)"></span>空き</span>
+                </div>
+              </template>
             </div>
 
             <div class="card">
