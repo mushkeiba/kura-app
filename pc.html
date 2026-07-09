@@ -106,13 +106,52 @@
   .msgout{white-space:pre-wrap;line-height:1.9;font-size:14.5px;background:#FFFDF9;}
 
   /* ── 収支 ── */
-  .fin-summary-body{padding:26px 18px 30px;text-align:center;}
-  .fin-num{font-family:"Shippori Mincho",serif;font-size:36px;color:var(--moss);letter-spacing:.02em;}
+  .fin-period{display:flex;align-items:center;gap:8px;padding:14px 18px;flex-wrap:wrap;}
+  .fin-chip{border:1px solid var(--line);background:#FFFDF9;color:#8A8577;font-size:12.5px;font-weight:700;
+    letter-spacing:.04em;padding:7px 16px;border-radius:20px;cursor:pointer;transition:all .16s ease;white-space:nowrap;font-family:inherit;}
+  .fin-chip:hover{border-color:var(--hinoki);color:var(--ink);}
+  .fin-chip.on{background:var(--moss);border-color:var(--moss);color:#F2EFE7;}
+  .fin-nav{display:flex;align-items:center;gap:2px;margin-left:auto;}
+  .fin-nav .lbl{font-size:14px;font-weight:700;color:var(--ink);min-width:96px;text-align:center;letter-spacing:.03em;}
+  .fin-range{display:flex;align-items:center;gap:10px;padding:0 18px 16px;}
+
+  .fin-headline{padding:32px 24px 6px;text-align:center;position:relative;}
+  .fin-headline::before{content:'';position:absolute;left:50%;top:0;transform:translateX(-50%);width:34px;height:2px;background:var(--vermillion);}
+  .fin-label{font-size:11.5px;letter-spacing:.18em;color:#A29B8A;font-weight:700;}
+  .fin-num{font-family:"Shippori Mincho",serif;font-size:46px;color:var(--moss);letter-spacing:.01em;
+    line-height:1.15;margin-top:4px;font-variant-numeric:tabular-nums;}
   .fin-num.minus{color:var(--vermillion);}
-  .fin-sub{color:#8A8577;font-size:13px;margin-top:8px;}
-  .fin-chan{padding:12px 18px 4px;display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:#8A8577;}
-  .fin-chan b{color:var(--ink);}
+  .fin-period-note{color:#8A8577;font-size:12.5px;margin-top:6px;}
+
+  .fin-waterfall{display:flex;flex-direction:column;padding:10px 24px 26px;max-width:440px;margin:0 auto;}
+  .fin-wf-row{display:flex;align-items:baseline;justify-content:space-between;padding:10px 0;border-bottom:1px dashed var(--line);font-size:14px;}
+  .fin-wf-row:last-child{border-bottom:none;}
+  .fin-wf-row .k{color:#8A8577;display:flex;align-items:center;gap:8px;}
+  .fin-wf-row .k .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none;}
+  .fin-wf-row .v{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);}
+  .fin-wf-row.minus .v{color:var(--vermillion);}
+  .fin-wf-row.final{border-top:2px solid var(--ink);margin-top:6px;padding-top:14px;}
+  .fin-wf-row.final .k{color:var(--ink);font-weight:700;}
+  .fin-wf-row.final .v{font-size:18px;color:var(--moss);}
+
+  .fin-chan{padding:2px 18px 20px;display:flex;flex-wrap:wrap;gap:10px;}
+  .fin-chan-pill{background:#F8F4EC;border-radius:10px;padding:8px 14px;font-size:12px;color:#8A8577;}
+  .fin-chan-pill b{color:var(--ink);font-size:13px;}
   .ledger tr.total td{background:#F8F4EC;font-weight:700;border-top:2px solid var(--line);}
+
+  .fin-chart-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px 0;}
+  .fin-toggle{display:flex;background:#F1EDE3;border-radius:8px;padding:3px;gap:2px;}
+  .fin-toggle button{border:none;background:transparent;font-size:12px;font-weight:700;color:#8A8577;
+    padding:6px 13px;border-radius:6px;cursor:pointer;font-family:inherit;transition:all .14s ease;}
+  .fin-toggle button.on{background:#FFFDF9;color:var(--ink);box-shadow:0 1px 3px rgba(42,42,38,.12);}
+  .fin-chart{display:flex;align-items:flex-end;gap:12px;height:210px;padding:28px 18px 10px;overflow-x:auto;}
+  .fin-bar-wrap{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;height:100%;justify-content:flex-end;min-width:38px;}
+  .fin-bar{width:28px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--hinoki) 0%,var(--moss) 100%);
+    transition:height .6s cubic-bezier(.22,.8,.3,1);}
+  .fin-bar-wrap.neg .fin-bar{background:linear-gradient(180deg,#D9B3A8,var(--vermillion));}
+  .fin-bar-val{font-size:10.5px;font-weight:700;color:var(--ink);margin-bottom:6px;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .fin-bar-label{font-size:10.5px;color:#8A8577;margin-top:9px;white-space:nowrap;}
+  .fin-chart-empty{padding:44px;text-align:center;color:#A29B8A;font-size:13px;}
 
   /* Vuetify 微調整 */
   .v-field{background:#FFFDF9 !important;}
@@ -166,7 +205,7 @@ function addDays(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p
 var App={
   data:function(){return{
     ready:false, needPw:true, pwInput:'', pwErr:'', busyPw:false,
-    ver:'pc-v4', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'pc-v5', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     q:'', showPast:false,
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
@@ -176,13 +215,25 @@ var App={
     msg:{uid:'',tpl:'',lang:'ja',code:''},
     lastFocusReload:0,
     fin:null, finMonth:(function(){var d=new Date();return d.getFullYear()+'-'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);})(),
-    finLoading:false,
+    finLoading:false, finRangeMode:'month', finYear:(new Date()).getFullYear(),
+    finFrom:'', finTo:'', finGranChoice:'auto', finMetric:'gross',
+    finCache:{}, finDisplayBalance:0, barsReady:false,
     exp:{date:todayStr(),category:'清掃',amount:'',memo:''},
     expOpen:false, expBusy:false
   };},
   computed:{
     tabTitle:function(){return {today:'今日の帳場',calendar:'カレンダー',list:'予約台帳',msg:'メッセージ作成',finance:'収支'}[this.tab]||'';},
     finMonthLabel:function(){var p=this.finMonth.split('-');return p[0]+'年 '+(+p[1])+'月';},
+    finRangeLabel:function(){
+      if(!this.fin)return '';
+      if(this.finRangeMode==='all')return '全期間';
+      if(this.finRangeMode==='year')return this.finYear+'年';
+      if(this.finRangeMode==='month')return this.finMonthLabel;
+      if(this.fin.from&&this.fin.to)return this.fmtMd(this.fin.from)+' 〜 '+this.fmtMd(this.fin.to);
+      return '';
+    },
+    finMax:function(){var s=this;if(!s.fin||!s.fin.series.length)return 1;var m=0;
+      s.fin.series.forEach(function(pt){var v=Math.abs(pt[s.finMetric]||0);if(v>m)m=v;});return m||1;},
     todoList:function(){
       var t=this.today||{};var out=[];
       (t.late||[]).forEach(function(x){out.push({uid:x.uid,col:x.col,title:x.task,sub:x.name,overdue:true,classify:false,done:false});});
@@ -381,10 +432,37 @@ var App={
     fallbackCopy:function(txt){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');this.toast('コピーしました ✓');}catch(e){this.toast('コピー失敗');}document.body.removeChild(ta);},
 
     // ── 収支 ──
-    loadFinance:function(){var s=this;s.finLoading=true;
-      apiCall('finance',{month:s.finMonth}).then(function(d){s.fin=d;s.finLoading=false;}).catch(function(e){s.finLoading=false;s.toast('収支の読み込みに失敗: '+e.message);});},
+    finRangeParams:function(){
+      var mode=this.finRangeMode;
+      if(mode==='month'){var p=this.finMonth.split('-');var last=new Date(+p[0],+p[1],0).getDate();return{from:this.finMonth+'-01',to:this.finMonth+'-'+(last<10?'0':'')+last};}
+      if(mode==='year')return{from:this.finYear+'-01-01',to:this.finYear+'-12-31'};
+      if(mode==='all')return{from:'',to:''};
+      return{from:this.finFrom||'',to:this.finTo||''};
+    },
+    setFinMode:function(mode){this.finRangeMode=mode;
+      if(mode==='month'){var d=new Date();this.finMonth=d.getFullYear()+'-'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);}
+      if(mode==='year')this.finYear=(new Date()).getFullYear();
+      this.loadFinance();},
+    setFinGran:function(g){this.finGranChoice=g;this.loadFinance();},
+    loadFinance:function(){var s=this;var rp=s.finRangeParams();var gran=s.finGranChoice;
+      var key=rp.from+'|'+rp.to+'|'+gran;
+      if(s.finCache[key]){s.fin=s.finCache[key];s.animateFin_();}
+      s.finLoading=true;
+      var params={};if(rp.from)params.from=rp.from;if(rp.to)params.to=rp.to;if(gran!=='auto')params.granularity=gran;
+      apiCall('finance',params).then(function(d){s.fin=d;s.finCache[key]=d;s.finLoading=false;s.animateFin_();})
+        .catch(function(e){s.finLoading=false;if(!s.fin)s.toast('収支の読み込みに失敗: '+e.message);});},
+    animateFin_:function(){var s=this;s.barsReady=false;s.$nextTick(function(){requestAnimationFrame(function(){s.barsReady=true;});});
+      if(!s.fin)return;var target=s.fin.balance,start=s.finDisplayBalance,t0=null,dur=650;
+      function step(ts){if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);var eased=1-Math.pow(1-p,3);
+        s.finDisplayBalance=Math.round(start+(target-start)*eased);if(p<1)requestAnimationFrame(step);else s.finDisplayBalance=target;}
+      requestAnimationFrame(step);},
     finStep:function(n){var p=this.finMonth.split('-');var y=+p[0],m=+p[1]+n;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.finMonth=y+'-'+(m<10?'0':'')+m;this.loadFinance();},
-    finThisMonth:function(){var d=new Date();this.finMonth=d.getFullYear()+'-'+((d.getMonth()+1)<10?'0':'')+(d.getMonth()+1);this.loadFinance();},
+    finYearStep:function(n){this.finYear+=n;this.loadFinance();},
+    fmtYenShort:function(n){n=Math.round(n||0);if(Math.abs(n)>=10000){var m=(n/10000);return (Math.round(m*10)/10)+'万';}return n.toLocaleString();},
+    seriesLabel:function(period){var p=String(period).split('-');
+      if(this.fin&&this.fin.granularity==='day')return (+p[1])+'/'+(+p[2]);
+      return String(p[0]).slice(2)+'/'+(+p[1]);},
+    barPct:function(pt){return Math.max(4,Math.abs(pt[this.finMetric]||0)/this.finMax*100);},
     openExpAdd:function(){this.exp={date:todayStr(),category:'清掃',amount:'',memo:''};this.expOpen=true;},
     submitExp:function(){var s=this;var e=s.exp;
       if(!e.date){s.toast('日付を入力してください');return;}
@@ -652,48 +730,109 @@ document.addEventListener('DOMContentLoaded', function(){
         <!-- ══ 収支 ══ -->
         <template v-else-if="tab==='finance'">
           <div class="card">
-            <div class="cal-toolbar">
-              <v-btn icon="mdi-chevron-left" variant="text" density="comfortable" @click="finStep(-1)"></v-btn>
-              <span class="label">{{ finMonthLabel }}</span>
-              <v-btn icon="mdi-chevron-right" variant="text" density="comfortable" @click="finStep(1)"></v-btn>
-              <v-btn size="small" variant="text" color="primary" @click="finThisMonth">今月へ</v-btn>
-              <v-spacer></v-spacer>
+            <div class="fin-period">
+              <button class="fin-chip" :class="{on:finRangeMode==='month'}" @click="setFinMode('month')">今月</button>
+              <button class="fin-chip" :class="{on:finRangeMode==='year'}" @click="setFinMode('year')">今年</button>
+              <button class="fin-chip" :class="{on:finRangeMode==='all'}" @click="setFinMode('all')">全期間</button>
+              <button class="fin-chip" :class="{on:finRangeMode==='custom'}" @click="setFinMode('custom')">期間を指定</button>
+              <div class="fin-nav" v-if="finRangeMode==='month'">
+                <v-btn icon="mdi-chevron-left" variant="text" density="comfortable" size="small" @click="finStep(-1)"></v-btn>
+                <span class="lbl">{{ finMonthLabel }}</span>
+                <v-btn icon="mdi-chevron-right" variant="text" density="comfortable" size="small" @click="finStep(1)"></v-btn>
+              </div>
+              <div class="fin-nav" v-else-if="finRangeMode==='year'">
+                <v-btn icon="mdi-chevron-left" variant="text" density="comfortable" size="small" @click="finYearStep(-1)"></v-btn>
+                <span class="lbl">{{ finYear }}年</span>
+                <v-btn icon="mdi-chevron-right" variant="text" density="comfortable" size="small" @click="finYearStep(1)"></v-btn>
+              </div>
+            </div>
+            <div class="fin-range" v-if="finRangeMode==='custom'">
+              <v-text-field v-model="finFrom" type="date" label="開始日" density="compact" hide-details style="max-width:170px" @update:model-value="loadFinance"></v-text-field>
+              <span style="color:#8A8577">〜</span>
+              <v-text-field v-model="finTo" type="date" label="終了日" density="compact" hide-details style="max-width:170px" @update:model-value="loadFinance"></v-text-field>
             </div>
           </div>
 
-          <div v-if="finLoading" class="pa-8 text-center" style="color:#A29B8A">読み込み中…</div>
+          <div v-if="finLoading && !fin" class="pa-8 text-center" style="color:#A29B8A">読み込み中…</div>
 
-          <template v-else-if="fin">
+          <template v-if="fin">
             <div class="card">
-              <div class="head"><v-icon size="16">mdi-scale-balance</v-icon>この月の収支</div>
-              <div class="fin-summary-body">
-                <div class="fin-num" :class="{minus:fin.balance<0}">{{ fin.balance<0?'−':'+' }}¥{{ Math.abs(fin.balance).toLocaleString() }}</div>
-                <div class="fin-sub">ネット収入 ¥{{ fin.income.netTotal.toLocaleString() }}　−　支出 ¥{{ fin.expense.total.toLocaleString() }}</div>
+              <div class="fin-headline">
+                <div class="fin-label">この期間の収支</div>
+                <div class="fin-num" :class="{minus:fin.balance<0}">{{ fin.balance<0?'−':'' }}¥{{ Math.abs(finDisplayBalance).toLocaleString() }}</div>
+                <div class="fin-period-note">{{ finRangeLabel }}</div>
+              </div>
+              <div class="fin-waterfall">
+                <div class="fin-wf-row">
+                  <span class="k"><span class="dot" style="background:var(--hinoki)"></span>グロス（客の支払い合計）</span>
+                  <span class="v">¥{{ fin.income.grossTotal.toLocaleString() }}</span>
+                </div>
+                <div class="fin-wf-row minus">
+                  <span class="k"><span class="dot" style="background:var(--vermillion)"></span>OTA手数料</span>
+                  <span class="v">−¥{{ fin.income.commissionTotal.toLocaleString() }}</span>
+                </div>
+                <div class="fin-wf-row minus">
+                  <span class="k"><span class="dot" style="background:var(--vermillion)"></span>大家取り分（30%）</span>
+                  <span class="v">−¥{{ fin.income.landlordShareTotal.toLocaleString() }}</span>
+                </div>
+                <div class="fin-wf-row">
+                  <span class="k"><span class="dot" style="background:var(--moss)"></span>手取り収入</span>
+                  <span class="v">¥{{ fin.income.finalNetTotal.toLocaleString() }}</span>
+                </div>
+                <div class="fin-wf-row minus" v-if="fin.expense.total">
+                  <span class="k"><span class="dot" style="background:var(--vermillion)"></span>支出</span>
+                  <span class="v">−¥{{ fin.expense.total.toLocaleString() }}</span>
+                </div>
+                <div class="fin-wf-row final">
+                  <span class="k">収支</span>
+                  <span class="v">¥{{ fin.balance.toLocaleString() }}</span>
+                </div>
+              </div>
+              <div class="fin-chan" v-if="Object.keys(fin.income.byChannel).length">
+                <div class="fin-chan-pill" v-for="(v,ch) in fin.income.byChannel" :key="ch"><b>{{ channelName(ch) }}</b> {{ v.count }}件・手取り ¥{{ v.finalNet.toLocaleString() }}</div>
               </div>
             </div>
 
             <div class="card">
-              <div class="head"><v-icon size="16">mdi-cash-plus</v-icon>収入</div>
-              <div class="fin-chan" v-if="Object.keys(fin.income.byChannel).length">
-                <span v-for="(v,ch) in fin.income.byChannel" :key="ch"><b>{{ channelName(ch) }}</b>　{{ v.count }}件　¥{{ v.net.toLocaleString() }}（手数料 ¥{{ v.commission.toLocaleString() }}）</span>
+              <div class="fin-chart-head">
+                <v-icon size="16" style="color:var(--hinoki)">mdi-chart-bar</v-icon>
+                <div class="fin-toggle">
+                  <button :class="{on:finMetric==='gross'}" @click="finMetric='gross'">売上</button>
+                  <button :class="{on:finMetric==='finalNet'}" @click="finMetric='finalNet'">手取り</button>
+                </div>
+                <div class="fin-toggle">
+                  <button :class="{on:finGranChoice==='auto'}" @click="setFinGran('auto')">自動</button>
+                  <button :class="{on:finGranChoice==='month'}" @click="setFinGran('month')">月次</button>
+                  <button :class="{on:finGranChoice==='day'}" @click="setFinGran('day')">日次</button>
+                </div>
               </div>
-              <div v-if="!fin.income.items.length" class="pa-8 text-center" style="color:#A29B8A">この月の収入はありません</div>
+              <div v-if="!fin.series.length" class="fin-chart-empty">この期間のデータはありません</div>
+              <div v-else class="fin-chart">
+                <div class="fin-bar-wrap" v-for="pt in fin.series" :key="pt.period" :class="{neg: pt[finMetric]<0}">
+                  <div class="fin-bar-val">¥{{ fmtYenShort(pt[finMetric]) }}</div>
+                  <div class="fin-bar" :style="{height: (barsReady?barPct(pt):0)+'%'}"></div>
+                  <div class="fin-bar-label">{{ seriesLabel(pt.period) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="head"><v-icon size="16">mdi-cash-plus</v-icon>収入の内訳</div>
+              <div v-if="!fin.income.items.length" class="pa-8 text-center" style="color:#A29B8A">この期間の収入はありません</div>
               <table v-else class="ledger">
-                <thead><tr><th>日程</th><th>お客さん名</th><th>チャネル</th><th>グロス</th><th>手数料</th><th>ネット</th></tr></thead>
+                <thead><tr><th>日程</th><th>お客さん名</th><th>チャネル</th><th>グロス</th><th>手取り</th></tr></thead>
                 <tbody>
                   <tr v-for="it in fin.income.items" :key="it.uid">
                     <td class="num">{{ fmtMd(it.in) }}→{{ fmtMd(it.out) }}</td>
                     <td>{{ it.name||'お名前未設定' }}</td>
                     <td><span class="chip" :class="chClass(it)">{{ chLabel(it) }}</span></td>
                     <td class="num">¥{{ it.gross.toLocaleString() }}</td>
-                    <td class="num" style="color:#8A8577">−¥{{ it.commission.toLocaleString() }}</td>
-                    <td class="num font-weight-bold">¥{{ it.net.toLocaleString() }}<span v-if="it.confirmed" class="text-caption" style="color:var(--moss)"> 確定</span></td>
+                    <td class="num font-weight-bold">¥{{ it.finalNet.toLocaleString() }}<span v-if="it.confirmed" class="text-caption" style="color:var(--moss)"> 確定</span></td>
                   </tr>
                   <tr class="total">
                     <td colspan="3">合計</td>
                     <td class="num">¥{{ fin.income.grossTotal.toLocaleString() }}</td>
-                    <td class="num">−¥{{ fin.income.commissionTotal.toLocaleString() }}</td>
-                    <td class="num">¥{{ fin.income.netTotal.toLocaleString() }}</td>
+                    <td class="num">¥{{ fin.income.finalNetTotal.toLocaleString() }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -705,7 +844,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 <v-spacer></v-spacer>
                 <v-btn size="small" variant="outlined" color="primary" prepend-icon="mdi-plus" @click="openExpAdd">支出を追加</v-btn>
               </div>
-              <div v-if="!fin.expense.items.length" class="pa-8 text-center" style="color:#A29B8A">この月の支出はありません</div>
+              <div v-if="!fin.expense.items.length" class="pa-8 text-center" style="color:#A29B8A">この期間の支出はありません</div>
               <table v-else class="ledger">
                 <thead><tr><th>日付</th><th>カテゴリ</th><th>金額</th><th>メモ</th><th></th></tr></thead>
                 <tbody>
