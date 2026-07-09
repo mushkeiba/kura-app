@@ -15,6 +15,7 @@ try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.s
 <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/vuetify@3.7.4/dist/vuetify.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600&display=swap">
 <style>
   html,body{margin:0;font-family:"Noto Sans JP",sans-serif;}
   .v-application{font-family:"Noto Sans JP",sans-serif !important;}
@@ -56,7 +57,6 @@ try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.s
   }
 
   /* ── 収支（見やすさ最優先・帳場と同じ和紙/苔緑/朱の配色を移植） ── */
-  @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600&display=swap');
   .fin-period{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 14px;-webkit-overflow-scrolling:touch;}
   .fin-chip{border:1px solid #E3DCCF;background:#FFFDF9;color:#8A8577;font-size:13px;font-weight:700;
     padding:9px 18px;border-radius:22px;white-space:nowrap;flex:none;font-family:inherit;}
@@ -102,6 +102,12 @@ try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.s
   .fin-chart-empty{padding:36px;text-align:center;color:#A29B8A;font-size:13px;}
 
   .fin-total-row{display:flex;justify-content:space-between;padding:14px 16px;background:#F8F4EC;font-weight:800;}
+  @keyframes finRise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .fin-fadewrap>*{animation:finRise .45s cubic-bezier(.22,.8,.3,1) both;}
+  .fin-fadewrap>*:nth-child(2){animation-delay:.06s;}
+  .fin-fadewrap>*:nth-child(3){animation-delay:.12s;}
+  .fin-fadewrap>*:nth-child(4){animation-delay:.18s;}
+  .fin-fadewrap>*:nth-child(5){animation-delay:.24s;}
 </style>
 </head>
 <body>
@@ -130,7 +136,7 @@ var App={
   data:function(){return{
     ready:false, allowed:false, myId:'', err:'',
     mode:'', needPw:false, pwInput:'', pwErr:'',
-    ver:'v28', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'v29', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
     add:{type:'予約',name:'',in:todayStr(),out:addStr(1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''},
@@ -246,7 +252,8 @@ var App={
       return '';
     },
     finMax:function(){var s=this;if(!s.fin||!s.fin.series.length)return 1;var m=0;
-      s.fin.series.forEach(function(pt){var v=Math.abs(pt[s.finMetric]||0);if(v>m)m=v;});return m||1;}
+      s.fin.series.forEach(function(pt){var v=Math.abs(pt[s.finMetric]||0);if(v>m)m=v;});return m||1;},
+    finKey:function(){if(!this.fin)return '';return (this.fin.from||'all')+'_'+(this.fin.to||'')+'_'+this.fin.granularity+'_'+this.finMetric;}
   },
   watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); else if(v==='finance'&&!this.fin)this.loadFinance(); } },
   methods:{
@@ -332,9 +339,11 @@ var App={
       var params={};if(rp.from)params.from=rp.from;if(rp.to)params.to=rp.to;if(gran!=='auto')params.granularity=gran;
       apiCall('finance',params).then(function(d){s.fin=d;s.finCache[key]=d;s.finLoading=false;s.animateFin_();})
         .catch(function(e){s.finLoading=false;if(!s.fin)s.toast('収支の読み込みに失敗: '+e.message);});},
-    animateFin_:function(){var s=this;s.barsReady=false;s.$nextTick(function(){requestAnimationFrame(function(){s.barsReady=true;});});
+    animateFin_:function(){var s=this;
+      s._finAnimGen=(s._finAnimGen||0)+1;var myGen=s._finAnimGen;
+      s.barsReady=false;s.$nextTick(function(){requestAnimationFrame(function(){if(myGen===s._finAnimGen)s.barsReady=true;});});
       if(!s.fin)return;var target=s.fin.balance,start=s.finDisplayBalance,t0=null,dur=650;
-      function step(ts){if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);var eased=1-Math.pow(1-p,3);
+      function step(ts){if(myGen!==s._finAnimGen)return;if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);var eased=1-Math.pow(1-p,3);
         s.finDisplayBalance=Math.round(start+(target-start)*eased);if(p<1)requestAnimationFrame(step);else s.finDisplayBalance=target;}
       requestAnimationFrame(step);},
     finStep:function(n){var p=this.finMonth.split('-');var y=+p[0],m=+p[1]+n;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.finMonth=y+'-'+(m<10?'0':'')+m;this.loadFinance();},
@@ -675,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
             <div v-if="finLoading && !fin" class="text-center text-medium-emphasis py-8">読み込み中…</div>
 
-            <template v-if="fin">
+            <div v-if="fin" class="fin-fadewrap" :key="finKey">
               <div class="fin-card">
                 <div class="fin-headline">
                   <div class="fin-label">この期間の収支</div>
@@ -692,7 +701,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     <span class="v">−¥{{ fin.income.commissionTotal.toLocaleString() }}</span>
                   </div>
                   <div class="fin-wf-row minus">
-                    <span class="k"><span class="dot" style="background:#A85542"></span>大家取り分（30%）</span>
+                    <span class="k"><span class="dot" style="background:#A85542"></span>大家さんの取り分（30%）</span>
                     <span class="v">−¥{{ fin.income.landlordShareTotal.toLocaleString() }}</span>
                   </div>
                   <div class="fin-wf-row">
@@ -780,7 +789,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 <v-divider></v-divider>
                 <div class="fin-total-row"><span>合計</span><span>¥{{ fin.expense.total.toLocaleString() }}</span></div>
               </v-card>
-            </template>
+            </div>
           </v-container>
         </v-window-item>
 

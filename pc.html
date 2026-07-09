@@ -205,7 +205,7 @@ function addDays(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p
 var App={
   data:function(){return{
     ready:false, needPw:true, pwInput:'', pwErr:'', busyPw:false,
-    ver:'pc-v5', tab:'today', loading:false, snack:false, snackText:'',
+    ver:'pc-v6', tab:'today', loading:false, snack:false, snackText:'',
     today:null, res:[], tpl:[],
     q:'', showPast:false,
     detail:null, detailOpen:false, editOpen:false, edit:{}, delConfirm:false,
@@ -234,6 +234,7 @@ var App={
     },
     finMax:function(){var s=this;if(!s.fin||!s.fin.series.length)return 1;var m=0;
       s.fin.series.forEach(function(pt){var v=Math.abs(pt[s.finMetric]||0);if(v>m)m=v;});return m||1;},
+    finKey:function(){if(!this.fin)return '';return (this.fin.from||'all')+'_'+(this.fin.to||'')+'_'+this.fin.granularity+'_'+this.finMetric;},
     todoList:function(){
       var t=this.today||{};var out=[];
       (t.late||[]).forEach(function(x){out.push({uid:x.uid,col:x.col,title:x.task,sub:x.name,overdue:true,classify:false,done:false});});
@@ -451,9 +452,13 @@ var App={
       var params={};if(rp.from)params.from=rp.from;if(rp.to)params.to=rp.to;if(gran!=='auto')params.granularity=gran;
       apiCall('finance',params).then(function(d){s.fin=d;s.finCache[key]=d;s.finLoading=false;s.animateFin_();})
         .catch(function(e){s.finLoading=false;if(!s.fin)s.toast('収支の読み込みに失敗: '+e.message);});},
-    animateFin_:function(){var s=this;s.barsReady=false;s.$nextTick(function(){requestAnimationFrame(function(){s.barsReady=true;});});
+    animateFin_:function(){var s=this;
+      // 連続で期間を切り替えると呼ばれる度に新しいrAFループが始まる。
+      // トークンで前の実行を無効化しないと、複数ループが同じ値を奪い合ってガタつく（重さの原因）。
+      s._finAnimGen=(s._finAnimGen||0)+1;var myGen=s._finAnimGen;
+      s.barsReady=false;s.$nextTick(function(){requestAnimationFrame(function(){if(myGen===s._finAnimGen)s.barsReady=true;});});
       if(!s.fin)return;var target=s.fin.balance,start=s.finDisplayBalance,t0=null,dur=650;
-      function step(ts){if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);var eased=1-Math.pow(1-p,3);
+      function step(ts){if(myGen!==s._finAnimGen)return;if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);var eased=1-Math.pow(1-p,3);
         s.finDisplayBalance=Math.round(start+(target-start)*eased);if(p<1)requestAnimationFrame(step);else s.finDisplayBalance=target;}
       requestAnimationFrame(step);},
     finStep:function(n){var p=this.finMonth.split('-');var y=+p[0],m=+p[1]+n;if(m<1){m=12;y--;}if(m>12){m=1;y++;}this.finMonth=y+'-'+(m<10?'0':'')+m;this.loadFinance();},
@@ -755,7 +760,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
           <div v-if="finLoading && !fin" class="pa-8 text-center" style="color:#A29B8A">読み込み中…</div>
 
-          <template v-if="fin">
+          <div v-if="fin" class="fadewrap" :key="finKey">
             <div class="card">
               <div class="fin-headline">
                 <div class="fin-label">この期間の収支</div>
@@ -772,7 +777,7 @@ document.addEventListener('DOMContentLoaded', function(){
                   <span class="v">−¥{{ fin.income.commissionTotal.toLocaleString() }}</span>
                 </div>
                 <div class="fin-wf-row minus">
-                  <span class="k"><span class="dot" style="background:var(--vermillion)"></span>大家取り分（30%）</span>
+                  <span class="k"><span class="dot" style="background:var(--vermillion)"></span>大家さんの取り分（30%）</span>
                   <span class="v">−¥{{ fin.income.landlordShareTotal.toLocaleString() }}</span>
                 </div>
                 <div class="fin-wf-row">
@@ -863,7 +868,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 </tbody>
               </table>
             </div>
-          </template>
+          </div>
         </template>
 
         </div><!-- /fadewrap -->
