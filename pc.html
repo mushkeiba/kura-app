@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', function(){
     </v-navigation-drawer>
 
     <v-main>
-      <v-progress-linear v-if="loading" indeterminate color="primary" style="position:fixed;top:0;left:0;z-index:9"></v-progress-linear>
+      <v-progress-linear v-if="loading || finLoading" indeterminate color="primary" style="position:fixed;top:0;left:0;z-index:9"></v-progress-linear>
       <div class="sheet">
         <div class="pagehead">
           <h1>{{ tabTitle }}</h1>

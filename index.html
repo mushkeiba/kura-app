@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function(){
     </v-app-bar>
 
     <v-main style="background:#FAFAFA">
-      <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
+      <v-progress-linear v-if="loading || finLoading" indeterminate color="primary"></v-progress-linear>
       <v-window v-model="tab" :touch="false">
 
         <!-- 今日 -->
