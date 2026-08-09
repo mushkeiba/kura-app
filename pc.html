@@ -225,7 +225,7 @@ var App={
     exp:{date:todayStr(),category:'清掃',amount:'',memo:''},
     expOpen:false, expBusy:false,
     priceRules:[], priceRulesLoaded:false,
-    prAdd:{target:'',content:'',memo:''}, prOpen:false, prBusy:false
+    prAdd:{singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prOpen:false, prBusy:false
   };},
   computed:{
     tabTitle:function(){return {today:'今日の帳場',calendar:'カレンダー',list:'予約台帳',msg:'メッセージ作成',finance:'収支',price:'料金ルール'}[this.tab]||'';},
@@ -494,12 +494,15 @@ var App={
 
     // ── 料金ルール（値上げメモ＋Airbnb/Booking反映チェック） ──
     loadPriceRules:function(){var s=this;apiCall('listPriceRules').then(function(d){s.priceRules=d.items;s.priceRulesLoaded=true;}).catch(function(e){s.toast('料金ルールの読み込みに失敗: '+e.message);});},
-    openPrAdd:function(){this.prAdd={target:'',content:'',memo:''};this.prOpen=true;},
+    openPrAdd:function(){this.prAdd={singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''};this.prOpen=true;},
+    prDateLabel:function(r){return r.from===r.to ? this.fmtMd(r.from) : this.fmtMd(r.from)+'〜'+this.fmtMd(r.to);},
     submitPr:function(){var s=this;var d=s.prAdd;
-      if(!String(d.target||'').trim()){s.toast('対象を入力してください');return;}
-      if(!String(d.content||'').trim()){s.toast('内容を入力してください');return;}
+      if(!d.from){s.toast('日付を入力してください');return;}
+      if(!d.singleDay&&!d.to){s.toast('終了日を入力してください');return;}
+      if(!Number(d.airbnbPrice)&&!Number(d.bookingPrice)){s.toast('Airbnb価格かBooking価格のどちらかを入力してください');return;}
       s.prBusy=true;
-      apiCall('addPriceRule',{payload:JSON.stringify(d)}).then(function(){s.prBusy=false;s.prOpen=false;s.toast('料金ルールを登録しました ✓');s.loadPriceRules();})
+      var payload={from:d.from,to:d.singleDay?d.from:d.to,airbnbPrice:d.airbnbPrice,bookingPrice:d.bookingPrice,memo:d.memo};
+      apiCall('addPriceRule',{payload:JSON.stringify(payload)}).then(function(){s.prBusy=false;s.prOpen=false;s.toast('料金ルールを登録しました ✓');s.loadPriceRules();})
         .catch(function(err){s.prBusy=false;s.toast('登録に失敗: '+err.message);});},
     togglePrChannel:function(rule,which){var s=this;var col=which==='airbnb'?'Airbnb設定済み':'Booking設定済み';
       var newVal=!(which==='airbnb'?rule.airbnbSet:rule.bookingSet);var patch={};patch[col]=newVal;
@@ -920,11 +923,12 @@ document.addEventListener('DOMContentLoaded', function(){
             </div>
             <div v-if="!priceRules.length" class="pa-8 text-center" style="color:#A29B8A">まだ記録はありません。祝日料金・特定日の値上げなどを決めたらここに記録してください</div>
             <table v-else class="ledger">
-              <thead><tr><th>対象</th><th>内容</th><th>Airbnb</th><th>Booking</th><th>メモ</th><th></th></tr></thead>
+              <thead><tr><th>日付</th><th>Airbnb価格</th><th>Booking価格</th><th>Airbnb</th><th>Booking</th><th>メモ</th><th></th></tr></thead>
               <tbody>
                 <tr v-for="r in priceRules" :key="r.uid">
-                  <td>{{ r.target }}</td>
-                  <td>{{ r.content }}</td>
+                  <td>{{ prDateLabel(r) }}</td>
+                  <td class="num">{{ r.airbnbPrice ? ('¥'+Number(r.airbnbPrice).toLocaleString()) : '—' }}</td>
+                  <td class="num">{{ r.bookingPrice ? ('¥'+Number(r.bookingPrice).toLocaleString()) : '—' }}</td>
                   <td><v-checkbox-btn :model-value="r.airbnbSet" @update:model-value="togglePrChannel(r,'airbnb')"></v-checkbox-btn></td>
                   <td><v-checkbox-btn :model-value="r.bookingSet" @update:model-value="togglePrChannel(r,'booking')"></v-checkbox-btn></td>
                   <td style="color:#8A8577">{{ r.memo }}</td>
@@ -1100,8 +1104,11 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-btn icon="mdi-close" variant="text" @click="prOpen=false"></v-btn>
         </v-toolbar>
         <v-card-text>
-          <v-text-field v-model="prAdd.target" label="対象（例：祝日全般／お盆 8/13〜16）"></v-text-field>
-          <v-text-field v-model="prAdd.content" label="内容（例：¥18,000に値上げ／+20%）"></v-text-field>
+          <v-checkbox v-model="prAdd.singleDay" label="単日のみ（特定の1日だけ）" hide-details density="comfortable" class="mb-2"></v-checkbox>
+          <v-text-field v-model="prAdd.from" :label="prAdd.singleDay?'対象日':'開始日'" type="date"></v-text-field>
+          <v-text-field v-if="!prAdd.singleDay" v-model="prAdd.to" label="終了日" type="date"></v-text-field>
+          <v-text-field v-model="prAdd.airbnbPrice" label="Airbnb価格（円・任意）" type="number"></v-text-field>
+          <v-text-field v-model="prAdd.bookingPrice" label="Booking価格（円・任意）" type="number"></v-text-field>
           <v-text-field v-model="prAdd.memo" label="メモ（任意）"></v-text-field>
           <v-btn color="primary" block size="large" :loading="prBusy" @click="submitPr">登録する</v-btn>
         </v-card-text>
