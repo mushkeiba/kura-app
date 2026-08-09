@@ -82,6 +82,11 @@
   .cal-empty:hover{background:transparent;}
   .cal-today{box-shadow:inset 0 0 0 2px var(--moss);}
   .cal-day{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .cal-cell.cal-pricehit{background:#FBF1DD;}
+  .cal-cell.cal-pricehit:hover{background:#F7E8C8;}
+  .cal-price-badge{display:inline-flex;gap:3px;margin-left:5px;vertical-align:middle;}
+  .cal-price-dot{width:6px;height:6px;border-radius:50%;background:#F3E3BE;border:1.5px solid var(--vermillion);display:inline-block;}
+  .cal-price-dot.on{background:var(--moss);border-color:var(--moss);}
   .cal-sun{color:#B3402F !important;}
   .cal-sat{color:#31597E !important;}
   .cal-seg{position:absolute;top:30px;height:26px;border-radius:7px;display:flex;align-items:center;padding:0 8px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(42,42,38,.08);transition:transform .14s ease,box-shadow .14s ease;}
@@ -267,6 +272,18 @@ var App={
       });
       return occ;
     },
+    priceMap:function(){  // 日付 → その日に適用中の料金ルール（値上げ日のカレンダー表示用）
+      var map={};
+      this.priceRules.forEach(function(r){
+        if(!r.from||!r.to)return;
+        var d=new Date(r.from+'T00:00:00'),end=new Date(r.to+'T00:00:00'),guard=0;
+        while(d<=end&&guard<400){
+          map[d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())]=r;
+          d.setDate(d.getDate()+1);guard++;
+        }
+      });
+      return map;
+    },
     monthBlocks:function(){  // 当月＋翌月を横並び表示
       var out=[];
       for(var off=0;off<2;off++){
@@ -343,7 +360,8 @@ var App={
       });},
     applyBoot:function(d){this.today=d.today||null;this.res=(d.list&&d.list.items)||[];this.tpl=(d.templates&&d.templates.items)||[];
       try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:this.today,res:this.res,tpl:this.tpl}));}catch(e){}
-      this.prefetchFinance_();},
+      this.prefetchFinance_();
+      if(!this.priceRulesLoaded)this.loadPriceRules();}, // カレンダーの値上げ日マーカーに使うので早めに取得しておく
     // 収支タブは他タブと違いbootstrapに含めない（開く人ばかりじゃないので毎回の起動を遅くしない）。
     // その代わり起動直後に裏で1回だけ静かに取得しておき、実際にタブを開いた時は
     // 大抵キャッシュ済み＝待たされない、という体感にする。
@@ -366,6 +384,7 @@ var App={
       // 帯は「IN日の午後 〜 OUT日の午前」の半日オフセット表示。
       // チェックアウト日にも帯の端が見え、同日ターンオーバー（退室+入室）は同じマスに左右で並ぶ。
       var occ=this.occMap;
+      var pm=this.priceMap;
       var lead=new Date(y,m-1,1).getDay();
       var dim=new Date(y,m,0).getDate();
       var cells=[],i;
@@ -373,7 +392,7 @@ var App={
       for(var day=1;day<=dim;day++){
         var k=y+'-'+p2(m)+'-'+p2(day);
         var o=occ[k]||null;
-        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr()});
+        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr(),price:pm[k]||null});
       }
       while(cells.length%7)cells.push(null);
       var res=this.res;
@@ -408,6 +427,10 @@ var App={
       return weeks;
     },
     onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
+    priceTitle:function(p){var parts=[];
+      if(p.airbnbPrice)parts.push('Airbnb ¥'+Number(p.airbnbPrice).toLocaleString()+'（'+(p.airbnbSet?'設定済み':'未設定')+'）');
+      if(p.bookingPrice)parts.push('Booking ¥'+Number(p.bookingPrice).toLocaleString()+'（'+(p.bookingSet?'設定済み':'未設定')+'）');
+      return '値上げ日\n'+parts.join('\n');},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:addDays(date,1),adults:'2',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     openDetail:function(uid){var s=this;var r=s.findRes(uid);if(r){s.detail=r;s.detailOpen=true;return;}
       apiCall('list',{}).then(function(d){s.res=d.items||[];var r2=s.findRes(uid);if(r2){s.detail=r2;s.detailOpen=true;}else s.toast('見つかりません');});},
@@ -668,8 +691,13 @@ document.addEventListener('DOMContentLoaded', function(){
                     <div class="cal-weekbg">
                       <template v-for="(c,ci) in wk.days" :key="ci">
                         <div v-if="!c" class="cal-cell cal-empty"></div>
-                        <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
-                          <div class="cal-day" :class="dowColor(ci)">{{ c.day }}</div>
+                        <div v-else class="cal-cell" :class="{'cal-today':c.today,'cal-pricehit':c.price}" @click="onDay(c)">
+                          <div class="cal-day" :class="dowColor(ci)">{{ c.day }}
+                            <span v-if="c.price" class="cal-price-badge" :title="priceTitle(c.price)">
+                              <span class="cal-price-dot" :class="{on:c.price.airbnbSet}"></span>
+                              <span class="cal-price-dot" :class="{on:c.price.bookingSet}"></span>
+                            </span>
+                          </div>
                         </div>
                       </template>
                     </div>
@@ -680,6 +708,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
               </div>
               <div class="text-caption text-center mt-4" style="color:#A29B8A">帯＝チェックイン午後〜チェックアウト午前（退室日と入室日が同じマスに並ぶことがあります）／空いている日をクリック → 新規登録</div>
+              <div class="text-caption text-center" style="color:#A29B8A">背景が黄色い日＝料金ルールで値上げ設定した日／日付の横の点＝Airbnb・Bookingの反映チェック（緑＝設定済み、点にカーソルで詳細）</div>
               <div class="text-caption text-center" style="color:#B3402F" v-if="hasConflict">⚠️ 赤枠は予約が重複しています。確認してください</div>
             </div>
           </div>

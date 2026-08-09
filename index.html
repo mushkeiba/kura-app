@@ -38,6 +38,10 @@ try{var u=new URL(location.href);if(!u.searchParams.has('_cb')){u.searchParams.s
   .cal-cell:active{filter:brightness(.96);}
   .cal-today{box-shadow:inset 0 0 0 2px #06C755;}
   .cal-day{font-size:14px;font-weight:700;color:#1F2328;line-height:1.1;}
+  .cal-cell.cal-pricehit{background:#FFF6E5;}
+  .cal-price-badge{display:inline-flex;gap:2px;margin-left:4px;vertical-align:middle;}
+  .cal-price-dot{width:5px;height:5px;border-radius:50%;background:#F5E6C8;border:1.3px solid #E08A3C;display:inline-block;}
+  .cal-price-dot.on{background:#06C755;border-color:#06C755;}
   .cal-sun{color:#DC2626 !important;}
   .cal-sat{color:#1565C0 !important;}
   .cal-seg{position:absolute;top:25px;height:22px;border-radius:6px;display:flex;align-items:center;padding:0 7px;overflow:hidden;cursor:pointer;}
@@ -166,6 +170,18 @@ var App={
       return out;
     },
     calLabel:function(){return this.cal.y+'年 '+this.cal.m+'月';},
+    priceMap:function(){  // 日付 → その日に適用中の料金ルール（値上げ日のカレンダー表示用）
+      var map={};
+      this.priceRules.forEach(function(r){
+        if(!r.from||!r.to)return;
+        var d=new Date(r.from+'T00:00:00'),end=new Date(r.to+'T00:00:00'),guard=0;
+        while(d<=end&&guard<400){
+          map[d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())]=r;
+          d.setDate(d.getDate()+1);guard++;
+        }
+      });
+      return map;
+    },
     calCells:function(){
       // 各夜を覆う予約を集める（泊数ベース：IN〜OUT前日。OUT当日は空き）
       var cover={};
@@ -185,6 +201,7 @@ var App={
         if(bk.length)occ[k]={r:bk[0],conflict:bk.length>1};
         else occ[k]={r:arr[0],conflict:false};
       });
+      var pm=this.priceMap;
       var first=new Date(this.cal.y,this.cal.m-1,1);
       var lead=first.getDay();
       var dim=new Date(this.cal.y,this.cal.m,0).getDate();
@@ -193,7 +210,7 @@ var App={
       for(var day=1;day<=dim;day++){
         var k=this.cal.y+'-'+p2(this.cal.m)+'-'+p2(day);
         var o=occ[k]||null;
-        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr()});
+        cells.push({day:day,date:k,r:o?o.r:null,conflict:o?o.conflict:false,start:!!(o&&o.r.in===k),today:k===todayStr(),price:pm[k]||null});
       }
       return cells;
     },
@@ -283,6 +300,10 @@ var App={
     cellName:function(r){if(!r)return '';if(r.type==='売り止め'||r.type==='ブロック')return '売り止め';return (r.name&&r.name.trim())?r.name:this.chLabel(r);},
     segStyle:function(s){var L=s.pos/7*100,W=s.len/7*100;return {left:'calc('+L+'% + 2px)',width:'calc('+W+'% - 4px)'};},
     onDay:function(c){if(!c)return;if(c.r)this.openDetail(c.r.uid);else this.openAddFor(c.date);},
+    priceTitle:function(p){var parts=[];
+      if(p.airbnbPrice)parts.push('Airbnb ¥'+Number(p.airbnbPrice).toLocaleString()+'（'+(p.airbnbSet?'設定済み':'未設定')+'）');
+      if(p.bookingPrice)parts.push('Booking ¥'+Number(p.bookingPrice).toLocaleString()+'（'+(p.bookingSet?'設定済み':'未設定')+'）');
+      return '値上げ日\n'+parts.join('\n');},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:this.addDays(date,1),adults:'2',children:'0',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     addDays:function(s,n){var p=String(s).split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},
     toDateObj:function(s){if(!s)return null;var p=String(s).split('-');if(p.length!==3)return null;return new Date(+p[0],+p[1]-1,+p[2]);},
@@ -417,6 +438,7 @@ var App={
         if(s.allowed){s.today=d.today||null;s.res=(d.list&&d.list.items)||[];s.tpl=(d.templates&&d.templates.items)||[];
           try{if(window.localStorage)localStorage.setItem('kura_cache',JSON.stringify({t:Date.now(),today:s.today,res:s.res,tpl:s.tpl}));}catch(e){}
           s.prefetchFinance_();
+          if(!s.priceRulesLoaded)s.loadPriceRules(); // カレンダーの値上げ日マーカーに使うので早めに取得しておく
         }else{try{if(window.localStorage)localStorage.removeItem('kura_cache');}catch(e){}}
       }).catch(function(e){s.loading=false;
         if(s.ready&&s.res.length){s.toast('更新に失敗しました（前回のデータを表示中）');return;} // キャッシュ表示中なら致命にしない
@@ -662,8 +684,13 @@ document.addEventListener('DOMContentLoaded', function(){
               <div class="cal-weekbg">
                 <template v-for="(c,ci) in wk.days" :key="ci">
                   <div v-if="!c" class="cal-cell cal-empty"></div>
-                  <div v-else class="cal-cell" :class="{'cal-today':c.today}" @click="onDay(c)">
-                    <div class="cal-day" :class="dowColor(ci)">{{ c.day }}</div>
+                  <div v-else class="cal-cell" :class="{'cal-today':c.today,'cal-pricehit':c.price}" @click="onDay(c)">
+                    <div class="cal-day" :class="dowColor(ci)">{{ c.day }}
+                      <span v-if="c.price" class="cal-price-badge" :title="priceTitle(c.price)">
+                        <span class="cal-price-dot" :class="{on:c.price.airbnbSet}"></span>
+                        <span class="cal-price-dot" :class="{on:c.price.bookingSet}"></span>
+                      </span>
+                    </div>
                   </div>
                 </template>
               </div>
@@ -672,6 +699,7 @@ document.addEventListener('DOMContentLoaded', function(){
               </div>
             </div>
             <div class="text-caption text-medium-emphasis text-center mt-4 mb-1">白い日（空き）をタップ → 予約・売り止めを登録</div>
+            <div class="text-caption text-medium-emphasis text-center mb-1">背景が黄色い日＝料金ルールで値上げ設定した日／日付横の点＝Airbnb・Bookingの反映チェック（緑＝設定済み）</div>
             <div class="text-caption text-error text-center" v-if="calCells.some(function(c){return c&&c.conflict;})">⚠️ 赤枠は予約が重複しています。確認してください</div>
           </v-container>
         </v-window-item>
