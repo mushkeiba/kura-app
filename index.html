@@ -153,7 +153,9 @@ var App={
     finFrom:'', finTo:'', finGranChoice:'auto', finMetric:'gross',
     finCache:{}, finDisplayBalance:0, barsReady:false,
     exp:{date:todayStr(),category:'清掃',amount:'',memo:''},
-    expOpen:false, expBusy:false
+    expOpen:false, expBusy:false,
+    priceRules:[], priceRulesLoaded:false,
+    prAdd:{target:'',content:'',memo:''}, prOpen:false, prBusy:false
   };},
   computed:{
     todoList:function(){
@@ -259,7 +261,7 @@ var App={
       s.fin.series.forEach(function(pt){var v=Math.abs(pt[s.finMetric]||0);if(v>m)m=v;});return m||1;},
     finKey:function(){if(!this.fin)return '';return (this.fin.from||'all')+'_'+(this.fin.to||'')+'_'+this.fin.granularity+'_'+this.finMetric;}
   },
-  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); else if(v==='finance'&&!this.fin)this.loadFinance(); } },
+  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); else if(v==='finance'&&!this.fin)this.loadFinance(); else if(v==='price'&&!this.priceRulesLoaded)this.loadPriceRules(); } },
   methods:{
     fmtMd:fmtMd, fmtJa:fmtJa, fmtJaShort:fmtJaShort,
     toast:function(m){this.snackText=m;this.snack=true;},
@@ -371,6 +373,22 @@ var App={
       s.expBusy=true;
       apiCall('addExpense',{payload:JSON.stringify(e)}).then(function(){s.expBusy=false;s.expOpen=false;s.toast('支出を登録しました ✓');s.loadFinance();})
         .catch(function(err){s.expBusy=false;s.toast('登録に失敗: '+err.message);});},
+
+    // ── 料金ルール（値上げメモ＋Airbnb/Booking反映チェック） ──
+    loadPriceRules:function(){var s=this;apiCall('listPriceRules').then(function(d){s.priceRules=d.items;s.priceRulesLoaded=true;}).catch(function(e){s.toast('料金ルールの読み込みに失敗: '+e.message);});},
+    openPrAdd:function(){this.prAdd={target:'',content:'',memo:''};this.prOpen=true;},
+    submitPr:function(){var s=this;var d=s.prAdd;
+      if(!String(d.target||'').trim()){s.toast('対象を入力してください');return;}
+      if(!String(d.content||'').trim()){s.toast('内容を入力してください');return;}
+      s.prBusy=true;
+      apiCall('addPriceRule',{payload:JSON.stringify(d)}).then(function(){s.prBusy=false;s.prOpen=false;s.toast('料金ルールを登録しました ✓');s.loadPriceRules();})
+        .catch(function(err){s.prBusy=false;s.toast('登録に失敗: '+err.message);});},
+    togglePrChannel:function(rule,which){var s=this;var col=which==='airbnb'?'Airbnb設定済み':'Booking設定済み';
+      var newVal=!(which==='airbnb'?rule.airbnbSet:rule.bookingSet);var patch={};patch[col]=newVal;
+      apiCall('updatePriceRule',{payload:JSON.stringify({uid:rule.uid,patch:patch})}).then(function(){
+        if(which==='airbnb')rule.airbnbSet=newVal;else rule.bookingSet=newVal;
+      }).catch(function(e){s.toast('更新に失敗: '+e.message);});},
+    deletePr:function(uid){var s=this;apiCall('deletePriceRule',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadPriceRules();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
     deleteExp:function(uid){var s=this;apiCall('deleteExpense',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadFinance();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
     boot:function(){var s=this;
       var savedPw=(window.localStorage&&localStorage.getItem('kura_pw'))||'';
@@ -470,6 +488,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <span v-else-if="tab==='list'">予約一覧</span>
         <span v-else-if="tab==='add'">予約を追加</span>
         <span v-else-if="tab==='finance'">収支</span>
+        <span v-else-if="tab==='price'">料金ルール</span>
         <span v-else>メッセージ</span>
         <span class="text-caption text-disabled ml-2" style="font-weight:400">{{ ver }}</span>
       </v-app-bar-title>
@@ -812,6 +831,35 @@ document.addEventListener('DOMContentLoaded', function(){
           </v-container>
         </v-window-item>
 
+        <!-- 料金ルール -->
+        <v-window-item value="price">
+          <v-container>
+            <div class="d-flex align-center justify-space-between mb-2 ml-1">
+              <div class="text-medium-emphasis text-caption font-weight-bold" style="letter-spacing:.08em">料金ルール（値上げメモ）</div>
+              <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" @click="openPrAdd">追加</v-btn>
+            </div>
+            <v-card v-if="!priceRules.length" class="mb-5"><v-card-text class="text-center text-medium-emphasis py-6">まだ記録はありません。祝日料金・特定日の値上げなどを決めたらここに記録してください</v-card-text></v-card>
+            <v-card v-else class="mb-5">
+              <v-list>
+                <template v-for="(r,i) in priceRules" :key="r.uid">
+                  <v-list-item>
+                    <v-list-item-title style="font-size:15px">{{ r.target }}<span class="text-medium-emphasis ml-2 text-body-2">{{ r.content }}</span></v-list-item-title>
+                    <v-list-item-subtitle v-if="r.memo">{{ r.memo }}</v-list-item-subtitle>
+                    <div class="d-flex align-center mt-1" style="gap:6px">
+                      <v-checkbox-btn density="compact" :model-value="r.airbnbSet" @update:model-value="togglePrChannel(r,'airbnb')" label="Airbnb"></v-checkbox-btn>
+                      <v-checkbox-btn density="compact" :model-value="r.bookingSet" @update:model-value="togglePrChannel(r,'booking')" label="Booking"></v-checkbox-btn>
+                    </div>
+                    <template #append>
+                      <v-btn icon="mdi-close" size="x-small" variant="text" @click="deletePr(r.uid)"></v-btn>
+                    </template>
+                  </v-list-item>
+                  <v-divider v-if="i<priceRules.length-1"></v-divider>
+                </template>
+              </v-list>
+            </v-card>
+          </v-container>
+        </v-window-item>
+
       </v-window>
     </v-main>
 
@@ -970,6 +1018,22 @@ document.addEventListener('DOMContentLoaded', function(){
       </v-card>
     </v-dialog>
 
+    <!-- 料金ルールを追加 -->
+    <v-dialog v-model="prOpen" fullscreen transition="dialog-bottom-transition">
+      <v-card rounded="0" border="0">
+        <v-toolbar flat border density="comfortable" style="background:#FFFFFF">
+          <v-btn icon="mdi-chevron-down" variant="text" @click="prOpen=false"></v-btn>
+          <v-toolbar-title style="font-weight:700;color:#1F2328">料金ルールを追加</v-toolbar-title>
+        </v-toolbar>
+        <v-card-text style="background:#FAFAFA">
+          <v-text-field v-model="prAdd.target" label="対象（例：祝日全般／お盆 8/13〜16）" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-model="prAdd.content" label="内容（例：¥18,000に値上げ／+20%）" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-model="prAdd.memo" label="メモ（任意）" variant="outlined" density="comfortable"></v-text-field>
+          <v-btn color="primary" block size="large" :loading="prBusy" @click="submitPr">登録する</v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
     <!-- 日付ピッカー（共通） -->
     <v-dialog v-model="pick.inOpen" width="auto"><v-date-picker :model-value="toDateObj(add.in)" @update:model-value="onPickIn" color="primary" title="チェックイン" show-adjacent-months></v-date-picker></v-dialog>
     <v-dialog v-model="pick.outOpen" width="auto"><v-date-picker :model-value="toDateObj(add.out)" @update:model-value="onPickOut" color="primary" title="チェックアウト" show-adjacent-months></v-date-picker></v-dialog>
@@ -983,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <v-btn value="calendar"><v-icon>mdi-calendar-month-outline</v-icon>カレンダー</v-btn>
       <v-btn value="msg"><v-icon>mdi-email-outline</v-icon>メッセ</v-btn>
       <v-btn value="finance"><v-icon>mdi-cash-multiple</v-icon>収支</v-btn>
+      <v-btn value="price"><v-icon>mdi-tag-multiple-outline</v-icon>料金</v-btn>
     </v-bottom-navigation>
 
     <v-snackbar v-model="snack" timeout="2000" location="bottom">{{ snackText }}</v-snackbar>
