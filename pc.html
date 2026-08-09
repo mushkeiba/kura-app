@@ -76,7 +76,7 @@
   .cal-duo{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
   @media(max-width:1180px){.cal-duo{grid-template-columns:1fr;}}
   .cal-month .mtitle{font-size:17px;letter-spacing:.1em;color:var(--ink);text-align:center;padding:4px 0 8px;}
-  .cal-cell{min-height:92px;border:1px solid #EBE5D8;margin:-0.5px;padding:6px 8px;cursor:pointer;background:#FFFDF9;transition:background .12s;}
+  .cal-cell{min-height:92px;border:1px solid #EBE5D8;margin:-0.5px;padding:6px 8px;cursor:pointer;background:#FFFDF9;transition:background .12s;position:relative;}
   .cal-cell:hover{background:#F6F1E7;}
   .cal-empty{border-color:transparent;background:transparent;cursor:default;}
   .cal-empty:hover{background:transparent;}
@@ -84,9 +84,9 @@
   .cal-day{font-size:13.5px;font-weight:700;color:var(--ink);}
   .cal-cell.cal-pricehit{background:#FBF1DD;}
   .cal-cell.cal-pricehit:hover{background:#F7E8C8;}
-  .cal-price-badge{display:inline-flex;gap:3px;margin-left:5px;vertical-align:middle;}
-  .cal-price-dot{width:6px;height:6px;border-radius:50%;background:#F3E3BE;border:1.5px solid var(--vermillion);display:inline-block;}
-  .cal-price-dot.on{background:var(--moss);border-color:var(--moss);}
+  .cal-price-tag{position:absolute;top:5px;right:7px;text-align:right;line-height:1.15;}
+  .cal-price-tag span{display:block;font-size:10px;font-weight:700;color:var(--vermillion);white-space:nowrap;}
+  .cal-price-tag span.done{color:var(--moss);}
   .cal-sun{color:#B3402F !important;}
   .cal-sat{color:#31597E !important;}
   .cal-seg{position:absolute;top:30px;height:26px;border-radius:7px;display:flex;align-items:center;padding:0 8px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(42,42,38,.08);transition:transform .14s ease,box-shadow .14s ease;}
@@ -431,6 +431,10 @@ var App={
       if(p.airbnbPrice)parts.push('Airbnb ¥'+Number(p.airbnbPrice).toLocaleString()+'（'+(p.airbnbSet?'設定済み':'未設定')+'）');
       if(p.bookingPrice)parts.push('Booking ¥'+Number(p.bookingPrice).toLocaleString()+'（'+(p.bookingSet?'設定済み':'未設定')+'）');
       return '値上げ日\n'+parts.join('\n');},
+    priceLines:function(p){var lines=[];
+      if(p.airbnbPrice)lines.push({ch:'A ',text:'¥'+Number(p.airbnbPrice).toLocaleString(),done:p.airbnbSet});
+      if(p.bookingPrice)lines.push({ch:'B ',text:'¥'+Number(p.bookingPrice).toLocaleString(),done:p.bookingSet});
+      return lines;},
     openAddFor:function(date){this.add={type:'予約',name:'',in:date,out:addDays(date,1),adults:'2',amount:'',phone:'',email:'',notes:''};this.addOpen=true;},
     openDetail:function(uid){var s=this;var r=s.findRes(uid);if(r){s.detail=r;s.detailOpen=true;return;}
       apiCall('list',{}).then(function(d){s.res=d.items||[];var r2=s.findRes(uid);if(r2){s.detail=r2;s.detailOpen=true;}else s.toast('見つかりません');});},
@@ -692,11 +696,9 @@ document.addEventListener('DOMContentLoaded', function(){
                       <template v-for="(c,ci) in wk.days" :key="ci">
                         <div v-if="!c" class="cal-cell cal-empty"></div>
                         <div v-else class="cal-cell" :class="{'cal-today':c.today,'cal-pricehit':c.price}" @click="onDay(c)">
-                          <div class="cal-day" :class="dowColor(ci)">{{ c.day }}
-                            <span v-if="c.price" class="cal-price-badge" :title="priceTitle(c.price)">
-                              <span class="cal-price-dot" :class="{on:c.price.airbnbSet}"></span>
-                              <span class="cal-price-dot" :class="{on:c.price.bookingSet}"></span>
-                            </span>
+                          <div class="cal-day" :class="dowColor(ci)">{{ c.day }}</div>
+                          <div v-if="c.price" class="cal-price-tag" :title="priceTitle(c.price)">
+                            <span v-for="(ln,li) in priceLines(c.price)" :key="li" :class="{done:ln.done}">{{ ln.ch }}{{ ln.text }}</span>
                           </div>
                         </div>
                       </template>
@@ -708,7 +710,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
               </div>
               <div class="text-caption text-center mt-4" style="color:#A29B8A">帯＝チェックイン午後〜チェックアウト午前（退室日と入室日が同じマスに並ぶことがあります）／空いている日をクリック → 新規登録</div>
-              <div class="text-caption text-center" style="color:#A29B8A">背景が黄色い日＝料金ルールで値上げ設定した日／日付の横の点＝Airbnb・Bookingの反映チェック（緑＝設定済み、点にカーソルで詳細）</div>
+              <div class="text-caption text-center" style="color:#A29B8A">背景が黄色い日＝料金ルールで値上げ設定した日／右上のA・Bは金額（Airbnb・Booking）、色が赤系＝まだ未設定、緑＝設定済み</div>
               <div class="text-caption text-center" style="color:#B3402F" v-if="hasConflict">⚠️ 赤枠は予約が重複しています。確認してください</div>
             </div>
           </div>
