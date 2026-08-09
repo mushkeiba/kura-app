@@ -159,7 +159,8 @@ var App={
     exp:{date:todayStr(),category:'清掃',amount:'',memo:''},
     expOpen:false, expBusy:false,
     priceRules:[], priceRulesLoaded:false,
-    prAdd:{singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prOpen:false, prBusy:false
+    prAdd:{singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prOpen:false, prBusy:false,
+    prEdit:{uid:'',singleDay:true,from:'',to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prEditOpen:false, prEditBusy:false
   };},
   computed:{
     todoList:function(){
@@ -417,6 +418,16 @@ var App={
         if(which==='airbnb')rule.airbnbSet=newVal;else rule.bookingSet=newVal;
       }).catch(function(e){s.toast('更新に失敗: '+e.message);});},
     deletePr:function(uid){var s=this;apiCall('deletePriceRule',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadPriceRules();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
+    openPrEdit:function(r){this.prEdit={uid:r.uid,singleDay:(r.from===r.to),from:r.from,to:r.to,airbnbPrice:r.airbnbPrice||'',bookingPrice:r.bookingPrice||'',memo:r.memo||''};this.prEditOpen=true;},
+    submitPrEdit:function(){var s=this;var d=s.prEdit;
+      if(!d.from){s.toast('日付を入力してください');return;}
+      if(!d.singleDay&&!d.to){s.toast('終了日を入力してください');return;}
+      if(!Number(d.airbnbPrice)&&!Number(d.bookingPrice)){s.toast('Airbnb価格かBooking価格のどちらかを入力してください');return;}
+      s.prEditBusy=true;
+      var patch={'開始日':d.from,'終了日':d.singleDay?d.from:d.to,'Airbnb価格':Number(d.airbnbPrice)||'','Booking価格':Number(d.bookingPrice)||'','メモ':d.memo};
+      apiCall('updatePriceRule',{payload:JSON.stringify({uid:d.uid,patch:patch})}).then(function(){s.prEditBusy=false;s.prEditOpen=false;s.toast('更新しました ✓');s.loadPriceRules();})
+        .catch(function(err){s.prEditBusy=false;s.toast('更新に失敗: '+err.message);});},
+    deletePrEdit:function(){var uid=this.prEdit.uid;this.prEditOpen=false;this.deletePr(uid);},
     deleteExp:function(uid){var s=this;apiCall('deleteExpense',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadFinance();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
     boot:function(){var s=this;
       var savedPw=(window.localStorage&&localStorage.getItem('kura_pw'))||'';
@@ -875,20 +886,20 @@ document.addEventListener('DOMContentLoaded', function(){
             <v-card v-else class="mb-5">
               <v-list>
                 <template v-for="(r,i) in priceRules" :key="r.uid">
-                  <v-list-item>
+                  <v-list-item @click="openPrEdit(r)">
                     <v-list-item-title style="font-size:15px">{{ prDateLabel(r) }}</v-list-item-title>
-                    <v-list-item-subtitle>
+                    <v-list-item-subtitle style="white-space:normal">
                       <span v-if="r.airbnbPrice">Airbnb ¥{{ Number(r.airbnbPrice).toLocaleString() }}</span>
                       <span v-if="r.airbnbPrice&&r.bookingPrice">　</span>
                       <span v-if="r.bookingPrice">Booking ¥{{ Number(r.bookingPrice).toLocaleString() }}</span>
                     </v-list-item-subtitle>
-                    <v-list-item-subtitle v-if="r.memo">{{ r.memo }}</v-list-item-subtitle>
-                    <div class="d-flex align-center mt-1" style="gap:6px">
+                    <v-list-item-subtitle v-if="r.memo" style="white-space:normal">{{ r.memo }}</v-list-item-subtitle>
+                    <div class="d-flex align-center mt-1" style="gap:6px" @click.stop>
                       <v-checkbox-btn density="compact" :model-value="r.airbnbSet" @update:model-value="togglePrChannel(r,'airbnb')" label="Airbnb"></v-checkbox-btn>
                       <v-checkbox-btn density="compact" :model-value="r.bookingSet" @update:model-value="togglePrChannel(r,'booking')" label="Booking"></v-checkbox-btn>
                     </div>
                     <template #append>
-                      <v-btn icon="mdi-close" size="x-small" variant="text" @click="deletePr(r.uid)"></v-btn>
+                      <v-btn icon="mdi-close" size="x-small" variant="text" @click.stop="deletePr(r.uid)"></v-btn>
                     </template>
                   </v-list-item>
                   <v-divider v-if="i<priceRules.length-1"></v-divider>
@@ -1071,6 +1082,26 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-text-field v-model="prAdd.bookingPrice" label="Booking価格（円・任意）" type="number" variant="outlined" density="comfortable"></v-text-field>
           <v-text-field v-model="prAdd.memo" label="メモ（任意）" variant="outlined" density="comfortable"></v-text-field>
           <v-btn color="primary" block size="large" :loading="prBusy" @click="submitPr">登録する</v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- 料金ルールを編集 -->
+    <v-dialog v-model="prEditOpen" fullscreen transition="dialog-bottom-transition">
+      <v-card rounded="0" border="0">
+        <v-toolbar flat border density="comfortable" style="background:#FFFFFF">
+          <v-btn icon="mdi-chevron-down" variant="text" @click="prEditOpen=false"></v-btn>
+          <v-toolbar-title style="font-weight:700;color:#1F2328">料金ルールを編集</v-toolbar-title>
+        </v-toolbar>
+        <v-card-text style="background:#FAFAFA">
+          <v-checkbox v-model="prEdit.singleDay" label="単日のみ（特定の1日だけ）" hide-details density="comfortable" class="mb-2"></v-checkbox>
+          <v-text-field v-model="prEdit.from" :label="prEdit.singleDay?'対象日':'開始日'" type="date" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-if="!prEdit.singleDay" v-model="prEdit.to" label="終了日" type="date" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-model="prEdit.airbnbPrice" label="Airbnb価格（円・任意）" type="number" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-model="prEdit.bookingPrice" label="Booking価格（円・任意）" type="number" variant="outlined" density="comfortable"></v-text-field>
+          <v-text-field v-model="prEdit.memo" label="メモ（任意）" variant="outlined" density="comfortable"></v-text-field>
+          <v-btn color="primary" block size="large" :loading="prEditBusy" @click="submitPrEdit">保存する</v-btn>
+          <v-btn color="error" variant="text" block class="mt-2" @click="deletePrEdit">この行を削除</v-btn>
         </v-card-text>
       </v-card>
     </v-dialog>
