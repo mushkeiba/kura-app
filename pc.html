@@ -533,7 +533,7 @@ var App={
     deleteExp:function(uid){var s=this;apiCall('deleteExpense',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadFinance();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
 
     // ── 料金ルール（値上げメモ＋Airbnb/Booking反映チェック） ──
-    loadPriceRules:function(){var s=this;apiCall('listPriceRules').then(function(d){console.log('DEBUG_loadPriceRules',d,d&&d.items&&d.items.length);s.priceRules=d.items;s.priceRulesLoaded=true;console.log('DEBUG_after_assign',s.priceRules.length);}).catch(function(e){console.log('DEBUG_loadPriceRules_ERR',e);s.toast('料金ルールの読み込みに失敗: '+e.message);});},
+    loadPriceRules:function(){var s=this;apiCall('listPriceRules').then(function(d){s.priceRules=d.items;s.priceRulesLoaded=true;}).catch(function(e){s.toast('料金ルールの読み込みに失敗: '+e.message);});},
     openPrAdd:function(){this.prAdd={singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''};this.prOpen=true;},
     prDateLabel:function(r){return r.from===r.to ? this.fmtMd(r.from) : this.fmtMd(r.from)+'〜'+this.fmtMd(r.to);},
     submitPr:function(){var s=this;var d=s.prAdd;
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }}}},
     defaults:{ VBtn:{rounded:'lg'}, VTextField:{variant:'outlined',density:'comfortable'}, VSelect:{variant:'outlined',density:'comfortable'}, VTextarea:{variant:'outlined'} }
   });
-  window.__APP__ = Vue.createApp(App).use(vuetify).mount('#app');
+  Vue.createApp(App).use(vuetify).mount('#app');
 });
 </script>
 
@@ -1029,9 +1029,9 @@ document.addEventListener('DOMContentLoaded', function(){
                 <tbody>
                   <tr v-for="r in promos" :key="r.uid" class="row" @click="openPmEdit(r)">
                     <td style="white-space:nowrap">{{ r.platform }}</td>
-                    <td style="white-space:nowrap">{{ r.name }}</td>
+                    <td style="white-space:normal;min-width:180px">{{ r.name }}</td>
                     <td class="num" style="white-space:nowrap">{{ r.discount||'—' }}</td>
-                    <td style="white-space:nowrap">{{ r.target||'—' }}</td>
+                    <td style="white-space:normal;min-width:140px">{{ r.target||'—' }}</td>
                     <td style="white-space:nowrap">
                       <span class="chip" :class="r.status==='有効'?'chip-ok':(r.status==='一時停止'?'chip-warn':'chip-off')">{{ r.status }}</span>
                     </td>
