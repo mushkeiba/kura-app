@@ -533,7 +533,7 @@ var App={
     deleteExp:function(uid){var s=this;apiCall('deleteExpense',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadFinance();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
 
     // ── 料金ルール（値上げメモ＋Airbnb/Booking反映チェック） ──
-    loadPriceRules:function(){var s=this;apiCall('listPriceRules').then(function(d){s.priceRules=d.items;s.priceRulesLoaded=true;}).catch(function(e){s.toast('料金ルールの読み込みに失敗: '+e.message);});},
+    loadPriceRules:function(){var s=this;apiCall('listPriceRules').then(function(d){console.log('DEBUG_loadPriceRules',d,d&&d.items&&d.items.length);s.priceRules=d.items;s.priceRulesLoaded=true;console.log('DEBUG_after_assign',s.priceRules.length);}).catch(function(e){console.log('DEBUG_loadPriceRules_ERR',e);s.toast('料金ルールの読み込みに失敗: '+e.message);});},
     openPrAdd:function(){this.prAdd={singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''};this.prOpen=true;},
     prDateLabel:function(r){return r.from===r.to ? this.fmtMd(r.from) : this.fmtMd(r.from)+'〜'+this.fmtMd(r.to);},
     submitPr:function(){var s=this;var d=s.prAdd;
