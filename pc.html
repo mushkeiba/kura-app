@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }}}},
     defaults:{ VBtn:{rounded:'lg'}, VTextField:{variant:'outlined',density:'comfortable'}, VSelect:{variant:'outlined',density:'comfortable'}, VTextarea:{variant:'outlined'} }
   });
-  Vue.createApp(App).use(vuetify).mount('#app');
+  window.__APP__ = Vue.createApp(App).use(vuetify).mount('#app');
 });
 </script>
 
