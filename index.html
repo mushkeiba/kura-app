@@ -160,7 +160,10 @@ var App={
     expOpen:false, expBusy:false,
     priceRules:[], priceRulesLoaded:false,
     prAdd:{singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prOpen:false, prBusy:false,
-    prEdit:{uid:'',singleDay:true,from:'',to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prEditOpen:false, prEditBusy:false
+    prEdit:{uid:'',singleDay:true,from:'',to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prEditOpen:false, prEditBusy:false,
+    promos:[], promosLoaded:false,
+    pmAdd:{platform:'Booking',name:'',discount:'',target:'',status:'有効',from:todayStr(),to:'',memo:''}, pmOpen:false, pmBusy:false,
+    pmEdit:{uid:'',platform:'Booking',name:'',discount:'',target:'',status:'有効',from:'',to:'',memo:''}, pmEditOpen:false, pmEditBusy:false
   };},
   computed:{
     todoList:function(){
@@ -279,7 +282,7 @@ var App={
       s.fin.series.forEach(function(pt){var v=Math.abs(pt[s.finMetric]||0);if(v>m)m=v;});return m||1;},
     finKey:function(){if(!this.fin)return '';return (this.fin.from||'all')+'_'+(this.fin.to||'')+'_'+this.fin.granularity+'_'+this.finMetric;}
   },
-  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); else if(v==='finance'&&!this.fin)this.loadFinance(); else if(v==='price'&&!this.priceRulesLoaded)this.loadPriceRules(); } },
+  watch:{ tab:function(v){ if(v==='today')this.loadToday(); else if(v==='list'||v==='msg'||v==='calendar')this.ensureRes(v); else if(v==='finance'&&!this.fin)this.loadFinance(); else if(v==='price'){ if(!this.priceRulesLoaded)this.loadPriceRules(); if(!this.promosLoaded)this.loadPromos(); } } },
   methods:{
     fmtMd:fmtMd, fmtJa:fmtJa, fmtJaShort:fmtJaShort,
     toast:function(m){this.snackText=m;this.snack=true;},
@@ -428,6 +431,28 @@ var App={
       apiCall('updatePriceRule',{payload:JSON.stringify({uid:d.uid,patch:patch})}).then(function(){s.prEditBusy=false;s.prEditOpen=false;s.toast('更新しました ✓');s.loadPriceRules();})
         .catch(function(err){s.prEditBusy=false;s.toast('更新に失敗: '+err.message);});},
     deletePrEdit:function(){var uid=this.prEdit.uid;this.prEditOpen=false;this.deletePr(uid);},
+
+    // ── プロモーション（Genius・直前割等の有効状況メモ） ──
+    loadPromos:function(){var s=this;apiCall('listPromos').then(function(d){s.promos=d.items;s.promosLoaded=true;}).catch(function(e){s.toast('プロモーションの読み込みに失敗: '+e.message);});},
+    openPmAdd:function(){this.pmAdd={platform:'Booking',name:'',discount:'',target:'',status:'有効',from:todayStr(),to:'',memo:''};this.pmOpen=true;},
+    pmDateLabel:function(r){if(!r.from)return '継続中';return r.to ? this.fmtMd(r.from)+'〜'+this.fmtMd(r.to) : this.fmtMd(r.from)+'〜';},
+    submitPm:function(){var s=this;var d=s.pmAdd;
+      if(!d.platform){s.toast('プラットフォームを選択してください');return;}
+      if(!String(d.name||'').trim()){s.toast('プロモーション名を入力してください');return;}
+      s.pmBusy=true;
+      var payload={platform:d.platform,name:d.name,discount:d.discount,target:d.target,status:d.status,from:d.from,to:d.to,memo:d.memo};
+      apiCall('addPromo',{payload:JSON.stringify(payload)}).then(function(){s.pmBusy=false;s.pmOpen=false;s.toast('プロモーションを登録しました ✓');s.loadPromos();})
+        .catch(function(err){s.pmBusy=false;s.toast('登録に失敗: '+err.message);});},
+    openPmEdit:function(r){this.pmEdit={uid:r.uid,platform:r.platform,name:r.name,discount:r.discount||'',target:r.target||'',status:r.status||'有効',from:r.from||'',to:r.to||'',memo:r.memo||''};this.pmEditOpen=true;},
+    submitPmEdit:function(){var s=this;var d=s.pmEdit;
+      if(!d.platform){s.toast('プラットフォームを選択してください');return;}
+      if(!String(d.name||'').trim()){s.toast('プロモーション名を入力してください');return;}
+      s.pmEditBusy=true;
+      var patch={'プラットフォーム':d.platform,'プロモーション名':d.name,'割引率':d.discount,'対象条件':d.target,'ステータス':d.status,'開始日':d.from,'終了日':d.to,'メモ':d.memo};
+      apiCall('updatePromo',{payload:JSON.stringify({uid:d.uid,patch:patch})}).then(function(){s.pmEditBusy=false;s.pmEditOpen=false;s.toast('更新しました ✓');s.loadPromos();})
+        .catch(function(err){s.pmEditBusy=false;s.toast('更新に失敗: '+err.message);});},
+    deletePm:function(uid){var s=this;apiCall('deletePromo',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadPromos();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
+    deletePmEdit:function(){var uid=this.pmEdit.uid;this.pmEditOpen=false;this.deletePm(uid);},
     deleteExp:function(uid){var s=this;apiCall('deleteExpense',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadFinance();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
     boot:function(){var s=this;
       var savedPw=(window.localStorage&&localStorage.getItem('kura_pw'))||'';
@@ -903,6 +928,34 @@ document.addEventListener('DOMContentLoaded', function(){
                     </template>
                   </v-list-item>
                   <v-divider v-if="i<priceRules.length-1"></v-divider>
+                </template>
+              </v-list>
+            </v-card>
+
+            <div class="d-flex align-center justify-space-between mb-2 ml-1">
+              <div class="text-medium-emphasis text-caption font-weight-bold" style="letter-spacing:.08em">適用中のプロモーション</div>
+              <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" @click="openPmAdd">追加</v-btn>
+            </div>
+            <v-card v-if="!promos.length" class="mb-5"><v-card-text class="text-center text-medium-emphasis py-6">まだ記録はありません。Genius・直前割等、OTA側でONにしたプロモーションをここに記録してください</v-card-text></v-card>
+            <v-card v-else class="mb-5">
+              <v-list>
+                <template v-for="(r,i) in promos" :key="r.uid">
+                  <v-list-item @click="openPmEdit(r)">
+                    <v-list-item-title style="font-size:15px">{{ r.platform }}｜{{ r.name }}
+                      <v-chip size="x-small" :color="r.status==='有効'?'success':(r.status==='一時停止'?'warning':'default')" variant="flat" class="ml-1">{{ r.status }}</v-chip>
+                    </v-list-item-title>
+                    <v-list-item-subtitle style="white-space:normal">
+                      <span v-if="r.discount">割引 {{ r.discount }}</span>
+                      <span v-if="r.discount&&r.target">　</span>
+                      <span v-if="r.target">対象 {{ r.target }}</span>
+                    </v-list-item-subtitle>
+                    <v-list-item-subtitle style="white-space:normal">{{ pmDateLabel(r) }}</v-list-item-subtitle>
+                    <v-list-item-subtitle v-if="r.memo" style="white-space:normal">{{ r.memo }}</v-list-item-subtitle>
+                    <template #append>
+                      <v-btn icon="mdi-close" size="x-small" variant="text" @click.stop="deletePm(r.uid)"></v-btn>
+                    </template>
+                  </v-list-item>
+                  <v-divider v-if="i<promos.length-1"></v-divider>
                 </template>
               </v-list>
             </v-card>

@@ -64,6 +64,11 @@
   .ch-stop{background:#E4E0D6;color:#6B675C;}
   .newdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--vermillion);margin-right:6px;}
 
+  /* ── プロモーションの状態チップ ── */
+  .chip-ok{background:#CBE5D2;color:#2F5D3C;}
+  .chip-warn{background:#F3DDA6;color:#7A5A16;}
+  .chip-off{background:#E4E0D6;color:#6B675C;}
+
   /* ── カレンダー ── */
   .cal-toolbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;}
   .cal-toolbar .label{font-size:19px;font-weight:600;letter-spacing:.08em;color:var(--ink);min-width:130px;text-align:center;}
@@ -235,7 +240,10 @@ var App={
     expOpen:false, expBusy:false,
     priceRules:[], priceRulesLoaded:false,
     prAdd:{singleDay:true,from:todayStr(),to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prOpen:false, prBusy:false,
-    prEdit:{uid:'',singleDay:true,from:'',to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prEditOpen:false, prEditBusy:false
+    prEdit:{uid:'',singleDay:true,from:'',to:'',airbnbPrice:'',bookingPrice:'',memo:''}, prEditOpen:false, prEditBusy:false,
+    promos:[], promosLoaded:false,
+    pmAdd:{platform:'Booking',name:'',discount:'',target:'',status:'有効',from:todayStr(),to:'',memo:''}, pmOpen:false, pmBusy:false,
+    pmEdit:{uid:'',platform:'Booking',name:'',discount:'',target:'',status:'有効',from:'',to:'',memo:''}, pmEditOpen:false, pmEditBusy:false
   };},
   computed:{
     tabTitle:function(){return {today:'今日の帳場',calendar:'カレンダー',list:'予約台帳',msg:'メッセージ作成',finance:'収支',price:'料金ルール'}[this.tab]||'';},
@@ -551,9 +559,31 @@ var App={
       var patch={'開始日':d.from,'終了日':d.singleDay?d.from:d.to,'Airbnb価格':Number(d.airbnbPrice)||'','Booking価格':Number(d.bookingPrice)||'','メモ':d.memo};
       apiCall('updatePriceRule',{payload:JSON.stringify({uid:d.uid,patch:patch})}).then(function(){s.prEditBusy=false;s.prEditOpen=false;s.toast('更新しました ✓');s.loadPriceRules();})
         .catch(function(err){s.prEditBusy=false;s.toast('更新に失敗: '+err.message);});},
-    deletePrEdit:function(){var uid=this.prEdit.uid;this.prEditOpen=false;this.deletePr(uid);}
+    deletePrEdit:function(){var uid=this.prEdit.uid;this.prEditOpen=false;this.deletePr(uid);},
+
+    // ── プロモーション（Genius・直前割等の有効状況メモ） ──
+    loadPromos:function(){var s=this;apiCall('listPromos').then(function(d){s.promos=d.items;s.promosLoaded=true;}).catch(function(e){s.toast('プロモーションの読み込みに失敗: '+e.message);});},
+    openPmAdd:function(){this.pmAdd={platform:'Booking',name:'',discount:'',target:'',status:'有効',from:todayStr(),to:'',memo:''};this.pmOpen=true;},
+    pmDateLabel:function(r){if(!r.from)return '継続中';return r.to ? this.fmtMd(r.from)+'〜'+this.fmtMd(r.to) : this.fmtMd(r.from)+'〜';},
+    submitPm:function(){var s=this;var d=s.pmAdd;
+      if(!d.platform){s.toast('プラットフォームを選択してください');return;}
+      if(!String(d.name||'').trim()){s.toast('プロモーション名を入力してください');return;}
+      s.pmBusy=true;
+      var payload={platform:d.platform,name:d.name,discount:d.discount,target:d.target,status:d.status,from:d.from,to:d.to,memo:d.memo};
+      apiCall('addPromo',{payload:JSON.stringify(payload)}).then(function(){s.pmBusy=false;s.pmOpen=false;s.toast('プロモーションを登録しました ✓');s.loadPromos();})
+        .catch(function(err){s.pmBusy=false;s.toast('登録に失敗: '+err.message);});},
+    openPmEdit:function(r){this.pmEdit={uid:r.uid,platform:r.platform,name:r.name,discount:r.discount||'',target:r.target||'',status:r.status||'有効',from:r.from||'',to:r.to||'',memo:r.memo||''};this.pmEditOpen=true;},
+    submitPmEdit:function(){var s=this;var d=s.pmEdit;
+      if(!d.platform){s.toast('プラットフォームを選択してください');return;}
+      if(!String(d.name||'').trim()){s.toast('プロモーション名を入力してください');return;}
+      s.pmEditBusy=true;
+      var patch={'プラットフォーム':d.platform,'プロモーション名':d.name,'割引率':d.discount,'対象条件':d.target,'ステータス':d.status,'開始日':d.from,'終了日':d.to,'メモ':d.memo};
+      apiCall('updatePromo',{payload:JSON.stringify({uid:d.uid,patch:patch})}).then(function(){s.pmEditBusy=false;s.pmEditOpen=false;s.toast('更新しました ✓');s.loadPromos();})
+        .catch(function(err){s.pmEditBusy=false;s.toast('更新に失敗: '+err.message);});},
+    deletePm:function(uid){var s=this;apiCall('deletePromo',{uid:uid}).then(function(){s.toast('削除しました ✓');s.loadPromos();}).catch(function(e){s.toast('削除に失敗: '+e.message);});},
+    deletePmEdit:function(){var uid=this.pmEdit.uid;this.pmEditOpen=false;this.deletePm(uid);}
   },
-  watch:{ tab:function(v){ if(v==='finance'&&!this.fin) this.loadFinance(); else if(v==='price'&&!this.priceRulesLoaded) this.loadPriceRules(); } },
+  watch:{ tab:function(v){ if(v==='finance'&&!this.fin) this.loadFinance(); else if(v==='price'){ if(!this.priceRulesLoaded) this.loadPriceRules(); if(!this.promosLoaded) this.loadPromos(); } } },
   mounted:function(){this.boot();},
   template:'#tpl'
 };
@@ -985,6 +1015,34 @@ document.addEventListener('DOMContentLoaded', function(){
               </table>
             </div>
           </div>
+
+          <div class="card mt-4">
+            <div class="head">
+              <v-icon size="16">mdi-sale-outline</v-icon>適用中のプロモーション
+              <v-spacer></v-spacer>
+              <v-btn size="small" variant="outlined" color="primary" prepend-icon="mdi-plus" @click="openPmAdd">プロモーションを追加</v-btn>
+            </div>
+            <div v-if="!promos.length" class="pa-8 text-center" style="color:#A29B8A">まだ記録はありません。Genius・直前割等、OTA側でONにしたプロモーションをここに記録してください</div>
+            <div v-else style="overflow-x:auto">
+              <table class="ledger pr-table">
+                <thead><tr><th>媒体</th><th>プロモーション名</th><th>割引率</th><th>対象条件</th><th>状態</th><th>期間</th><th>メモ</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="r in promos" :key="r.uid" class="row" @click="openPmEdit(r)">
+                    <td style="white-space:nowrap">{{ r.platform }}</td>
+                    <td style="white-space:nowrap">{{ r.name }}</td>
+                    <td class="num" style="white-space:nowrap">{{ r.discount||'—' }}</td>
+                    <td style="white-space:nowrap">{{ r.target||'—' }}</td>
+                    <td style="white-space:nowrap">
+                      <span class="chip" :class="r.status==='有効'?'chip-ok':(r.status==='一時停止'?'chip-warn':'chip-off')">{{ r.status }}</span>
+                    </td>
+                    <td style="white-space:nowrap">{{ pmDateLabel(r) }}</td>
+                    <td class="pr-memo">{{ r.memo }}</td>
+                    <td style="width:36px;white-space:nowrap" @click.stop><v-btn icon="mdi-close" size="x-small" variant="text" @click="deletePm(r.uid)"></v-btn></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </template>
 
         </div><!-- /fadewrap -->
@@ -1179,6 +1237,61 @@ document.addEventListener('DOMContentLoaded', function(){
           <v-text-field v-model="prEdit.memo" label="メモ（任意）"></v-text-field>
           <v-btn color="primary" block size="large" :loading="prEditBusy" @click="submitPrEdit">保存する</v-btn>
           <v-btn color="error" variant="text" block class="mt-2" @click="deletePrEdit">この行を削除</v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- プロモーションを追加 -->
+    <v-dialog v-model="pmOpen" max-width="480">
+      <v-card rounded="xl">
+        <v-toolbar flat density="comfortable" color="surface">
+          <v-toolbar-title class="font-weight-bold">プロモーションを追加</v-toolbar-title>
+          <v-btn icon="mdi-close" variant="text" @click="pmOpen=false"></v-btn>
+        </v-toolbar>
+        <v-card-text>
+          <v-btn-toggle v-model="pmAdd.platform" mandatory divided color="primary" class="mb-4" style="width:100%">
+            <v-btn value="Booking" style="flex:1">Booking</v-btn>
+            <v-btn value="Airbnb" style="flex:1">Airbnb</v-btn>
+            <v-btn value="その他" style="flex:1">その他</v-btn>
+          </v-btn-toggle>
+          <v-text-field v-model="pmAdd.name" label="プロモーション名（例：Genius、直前割）"></v-text-field>
+          <v-text-field v-model="pmAdd.discount" label="割引率（例：10%）"></v-text-field>
+          <v-text-field v-model="pmAdd.target" label="対象条件（例：Genius会員、全ゲスト）"></v-text-field>
+          <v-select v-model="pmAdd.status" :items="['有効','一時停止','終了']" label="状態"></v-select>
+          <v-row dense>
+            <v-col cols="6"><v-text-field v-model="pmAdd.from" label="開始日" type="date"></v-text-field></v-col>
+            <v-col cols="6"><v-text-field v-model="pmAdd.to" label="終了日（任意）" type="date"></v-text-field></v-col>
+          </v-row>
+          <v-text-field v-model="pmAdd.memo" label="メモ（任意）"></v-text-field>
+          <v-btn color="primary" block size="large" :loading="pmBusy" @click="submitPm">登録する</v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- プロモーションを編集 -->
+    <v-dialog v-model="pmEditOpen" max-width="480">
+      <v-card rounded="xl">
+        <v-toolbar flat density="comfortable" color="surface">
+          <v-toolbar-title class="font-weight-bold">プロモーションを編集</v-toolbar-title>
+          <v-btn icon="mdi-close" variant="text" @click="pmEditOpen=false"></v-btn>
+        </v-toolbar>
+        <v-card-text>
+          <v-btn-toggle v-model="pmEdit.platform" mandatory divided color="primary" class="mb-4" style="width:100%">
+            <v-btn value="Booking" style="flex:1">Booking</v-btn>
+            <v-btn value="Airbnb" style="flex:1">Airbnb</v-btn>
+            <v-btn value="その他" style="flex:1">その他</v-btn>
+          </v-btn-toggle>
+          <v-text-field v-model="pmEdit.name" label="プロモーション名"></v-text-field>
+          <v-text-field v-model="pmEdit.discount" label="割引率"></v-text-field>
+          <v-text-field v-model="pmEdit.target" label="対象条件"></v-text-field>
+          <v-select v-model="pmEdit.status" :items="['有効','一時停止','終了']" label="状態"></v-select>
+          <v-row dense>
+            <v-col cols="6"><v-text-field v-model="pmEdit.from" label="開始日" type="date"></v-text-field></v-col>
+            <v-col cols="6"><v-text-field v-model="pmEdit.to" label="終了日（任意）" type="date"></v-text-field></v-col>
+          </v-row>
+          <v-text-field v-model="pmEdit.memo" label="メモ（任意）"></v-text-field>
+          <v-btn color="primary" block size="large" :loading="pmEditBusy" @click="submitPmEdit">保存する</v-btn>
+          <v-btn color="error" variant="text" block class="mt-2" @click="deletePmEdit">この行を削除</v-btn>
         </v-card-text>
       </v-card>
     </v-dialog>
